@@ -12,9 +12,12 @@ const Login = React.lazy(() => import("./pages/auth/Login"));
 const Register = React.lazy(() => import("./pages/auth/Register"));
 const AuthSuccess = React.lazy(() => import("./pages/auth/AuthSuccess"));
 const ChatPage = React.lazy(() => import("./pages/chat/ChatPage"));
+const ChatDashboard = React.lazy(() => import("./pages/chat/ChatDashboard"));
+const Contacts = React.lazy(() => import("./pages/chat/Contacts"));
 const Profile = React.lazy(() => import("./pages/profile/Profile"));
 const Settings = React.lazy(() => import("./pages/profile/Settings"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
+const GoogleAuth = React.lazy(() => import("./components/auth/GoogleAuth"));
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -84,6 +87,7 @@ function App() {
                   </PublicRoute>
                 }
               />
+              <Route path="/auth/google" element={<GoogleAuth />} />
 
               <Route
                 path="/"
@@ -94,8 +98,9 @@ function App() {
                 }
               >
                 <Route index element={<Navigate to="/chat" replace />} />
-                <Route path="chat" element={<ChatPage />} />
+                <Route path="chat" element={<ChatDashboard />} />
                 <Route path="chat/:chatId" element={<ChatPage />} />
+                <Route path="contacts" element={<Contacts />} />{" "}
                 <Route path="profile" element={<Profile />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
