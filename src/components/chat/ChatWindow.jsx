@@ -61,18 +61,22 @@ export const ChatWindow = () => {
         setSocketConnected(false);
       };
 
-      socket.on("connect", handleConnect);
-      socket.on("disconnect", handleDisconnect);
-      socket.on("connect_error", handleConnectError);
+      if (socket && typeof socket.on === "function") {
+        socket.on("connect", handleConnect);
+        socket.on("disconnect", handleDisconnect);
+        socket.on("connect_error", handleConnectError);
 
-      if (socket.connected) {
-        setSocketConnected(true);
+        if (socket.connected) {
+          setSocketConnected(true);
+        }
       }
 
       return () => {
-        socket.off("connect", handleConnect);
-        socket.off("disconnect", handleDisconnect);
-        socket.off("connect_error", handleConnectError);
+        if (socket && typeof socket.off === "function") {
+          socket.off("connect", handleConnect);
+          socket.off("disconnect", handleDisconnect);
+          socket.off("connect_error", handleConnectError);
+        }
       };
     }
   }, [socket]);
@@ -96,7 +100,7 @@ export const ChatWindow = () => {
           dispatch(fetchMessages({ chatId })).unwrap(),
         ]);
 
-        if (socket && socketConnected) {
+        if (socket && socketConnected && typeof socket.emit === "function") {
           socket.emit("joinChat", chatId);
           console.log(`Joined chat room: ${chatId}`);
         }
@@ -114,7 +118,7 @@ export const ChatWindow = () => {
     loadChatData();
 
     return () => {
-      if (socket && chatId) {
+      if (socket && chatId && typeof socket.emit === "function") {
         socket.emit("leaveChat", chatId);
         console.log(`Left chat room: ${chatId}`);
       }
@@ -122,7 +126,7 @@ export const ChatWindow = () => {
   }, [chatId, dispatch, socket, socketConnected]);
 
   useEffect(() => {
-    if (!socket || !chatId) return;
+    if (!socket || !chatId || typeof socket.on !== "function") return;
 
     const handleNewMessage = (message) => {
       console.log("New message received:", message);
@@ -175,11 +179,13 @@ export const ChatWindow = () => {
     socket.on("error", handleError);
 
     return () => {
-      socket.off("newMessage", handleNewMessage);
-      socket.off("userTyping", handleUserTyping);
-      socket.off("userStoppedTyping", handleUserStoppedTyping);
-      socket.off("messageRead", handleMessageRead);
-      socket.off("error", handleError);
+      if (typeof socket.off === "function") {
+        socket.off("newMessage", handleNewMessage);
+        socket.off("userTyping", handleUserTyping);
+        socket.off("userStoppedTyping", handleUserStoppedTyping);
+        socket.off("messageRead", handleMessageRead);
+        socket.off("error", handleError);
+      }
     };
   }, [socket, chatId, dispatch, user?.id]);
 
@@ -193,7 +199,13 @@ export const ChatWindow = () => {
 
   const handleSendMessage = useCallback(
     (content, type = "TEXT") => {
-      if (!chatId || !content.trim() || !socket || !socketConnected) {
+      if (
+        !chatId ||
+        !content.trim() ||
+        !socket ||
+        !socketConnected ||
+        typeof socket.emit !== "function"
+      ) {
         if (!socketConnected) {
           toast.error("Not connected to server. Please refresh the page.");
         }
@@ -216,13 +228,23 @@ export const ChatWindow = () => {
   );
 
   const handleTyping = useCallback(() => {
-    if (socket && socketConnected && chatId) {
+    if (
+      socket &&
+      socketConnected &&
+      chatId &&
+      typeof socket.emit === "function"
+    ) {
       socket.emit("typing", { chatId });
     }
   }, [socket, socketConnected, chatId]);
 
   const handleStopTyping = useCallback(() => {
-    if (socket && socketConnected && chatId) {
+    if (
+      socket &&
+      socketConnected &&
+      chatId &&
+      typeof socket.emit === "function"
+    ) {
       socket.emit("stopTyping", { chatId });
     }
   }, [socket, socketConnected, chatId]);

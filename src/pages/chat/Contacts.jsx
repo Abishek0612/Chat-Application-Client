@@ -102,12 +102,16 @@ const Contacts = () => {
       console.log("Chat creation result:", result);
 
       let chatId;
-      if (result && result.chat && result.chat.id) {
+
+      if (result && result.data && result.data.chat && result.data.chat.id) {
+        chatId = result.data.chat.id;
+      } else if (result && result.chat && result.chat.id) {
         chatId = result.chat.id;
       } else if (result && result.id) {
         chatId = result.id;
       } else {
-        throw new Error("Invalid response structure");
+        console.error("Invalid response structure:", result);
+        throw new Error("Invalid response from server");
       }
 
       console.log("Navigating to chat:", chatId);

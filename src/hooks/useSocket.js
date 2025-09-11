@@ -83,21 +83,42 @@ export const useSocket = () => {
     };
   }, [isAuthenticated, token]);
 
-  const enhancedSocket = socketRef.current
+  return socketRef.current
     ? {
         ...socketRef.current,
         isConnected,
         error,
         emit: (...args) => {
-          if (socketRef.current && isConnected) {
+          if (
+            socketRef.current &&
+            isConnected &&
+            typeof socketRef.current.emit === "function"
+          ) {
             return socketRef.current.emit(...args);
           } else {
             console.warn("Cannot emit - socket not connected");
             return false;
           }
         },
+        on: (...args) => {
+          if (socketRef.current && typeof socketRef.current.on === "function") {
+            return socketRef.current.on(...args);
+          } else {
+            console.warn("Cannot set up listener - socket not available");
+            return false;
+          }
+        },
+        off: (...args) => {
+          if (
+            socketRef.current &&
+            typeof socketRef.current.off === "function"
+          ) {
+            return socketRef.current.off(...args);
+          } else {
+            console.warn("Cannot remove listener - socket not available");
+            return false;
+          }
+        },
       }
     : null;
-
-  return enhancedSocket;
 };

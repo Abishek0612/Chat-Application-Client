@@ -269,17 +269,17 @@ const chatSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchChatById.fulfilled, (state, action) => {
-        if (action.payload && action.payload.chat) {
-          state.currentChat = action.payload.chat;
+        if (action.payload && action.payload.data && action.payload.data.chat) {
+          state.currentChat = action.payload.data.chat;
           state.error = null;
 
           const chatIndex = state.chats.findIndex(
-            (chat) => chat && chat.id === action.payload.chat.id
+            (chat) => chat && chat.id === action.payload.data.chat.id
           );
           if (chatIndex !== -1) {
             state.chats[chatIndex] = {
               ...state.chats[chatIndex],
-              ...action.payload.chat,
+              ...action.payload.data.chat,
             };
           }
         } else {
