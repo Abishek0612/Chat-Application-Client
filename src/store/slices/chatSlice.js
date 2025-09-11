@@ -34,9 +34,12 @@ export const createChat = createAsyncThunk(
   "chat/createChat",
   async (chatData, { rejectWithValue }) => {
     try {
+      console.log("Creating chat with data:", chatData);
       const response = await chatAPI.createChat(chatData);
+      console.log("Chat creation response:", response.data);
       return response.data;
     } catch (error) {
+      console.error("Chat creation error:", error.response?.data);
       return rejectWithValue(
         error.response?.data?.message || "Failed to create chat"
       );

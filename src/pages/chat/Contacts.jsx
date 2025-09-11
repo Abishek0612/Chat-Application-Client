@@ -72,17 +72,23 @@ const Contacts = () => {
 
   const handleStartChat = async (contactUser) => {
     try {
+      console.log("Starting chat with user:", contactUser);
+
       const chatData = {
-        name: null,
         isGroup: false,
         members: [contactUser.id],
       };
 
+      console.log("Sending chat data:", chatData);
+
       const result = await dispatch(createChat(chatData)).unwrap();
+      console.log("Chat creation result:", result);
+
       navigate(`/chat/${result.chat.id}`);
       toast.success("Chat started!");
     } catch (error) {
-      toast.error("Failed to start chat");
+      console.error("Failed to start chat:", error);
+      toast.error(error.message || "Failed to start chat");
     }
   };
 
