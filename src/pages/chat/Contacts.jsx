@@ -32,6 +32,7 @@ const Contacts = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [activeTab, setActiveTab] = useState("contacts");
+  const [creatingChats, setCreatingChats] = useState(new Set());
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -44,6 +45,7 @@ const Contacts = () => {
       searchUsers(debouncedSearch);
     } else {
       setSearchResults([]);
+      setActiveTab("contacts");
     }
   }, [debouncedSearch]);
 
@@ -56,9 +58,12 @@ const Contacts = () => {
     setIsSearching(true);
     try {
       const response = await userAPI.searchUsers(query);
-      setSearchResults(response.data.users || []);
+      console.log("Search response:", response.data);
 
-      if (response.data.users && response.data.users.length > 0) {
+      const users = response.data.users || [];
+      setSearchResults(users);
+
+      if (users.length > 0) {
         setActiveTab("search");
       }
     } catch (error) {
@@ -71,6 +76,18 @@ const Contacts = () => {
   };
 
   const handleStartChat = async (contactUser) => {
+    if (!contactUser || !contactUser.id) {
+      console.error("Invalid contact user:", contactUser);
+      toast.error("Invalid user selected");
+      return;
+    }
+
+    if (creatingChats.has(contactUser.id)) {
+      return;
+    }
+
+    setCreatingChats((prev) => new Set([...prev, contactUser.id]));
+
     try {
       console.log("Starting chat with user:", contactUser);
 
@@ -84,20 +101,50 @@ const Contacts = () => {
       const result = await dispatch(createChat(chatData)).unwrap();
       console.log("Chat creation result:", result);
 
-      navigate(`/chat/${result.chat.id}`);
+      let chatId;
+      if (result && result.chat && result.chat.id) {
+        chatId = result.chat.id;
+      } else if (result && result.id) {
+        chatId = result.id;
+      } else {
+        throw new Error("Invalid response structure");
+      }
+
+      console.log("Navigating to chat:", chatId);
+      navigate(`/chat/${chatId}`);
       toast.success("Chat started!");
     } catch (error) {
       console.error("Failed to start chat:", error);
-      toast.error(error.message || "Failed to start chat");
+
+      let errorMessage = "Failed to start chat";
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
+
+      toast.error(errorMessage);
+    } finally {
+      setCreatingChats((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(contactUser.id);
+        return newSet;
+      });
     }
   };
 
   const handleAddContact = async (userId) => {
+    if (!userId) {
+      toast.error("Invalid user ID");
+      return;
+    }
+
     try {
       await dispatch(addContact(userId)).unwrap();
       toast.success("Contact added!");
       dispatch(fetchContacts());
     } catch (error) {
+      console.error("Add contact error:", error);
       toast.error("Failed to add contact");
     }
   };
@@ -219,62 +266,76 @@ const Contacts = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {contactsToShow.map((contact, index) => (
-                  <motion.div
-                    key={contact.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Avatar
-                        src={contact.avatar}
-                        alt={contact.firstName}
-                        size="md"
-                        fallbackText={contact.firstName}
-                        showOnlineStatus
-                        isOnline={contact.isOnline}
-                      />
-                      <div>
-                        <h3 className="font-medium text-gray-900">
-                          {contact.firstName} {contact.lastName}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          @{contact.username}
-                        </p>
-                        {contact.bio && (
-                          <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
-                            {contact.bio}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                {contactsToShow.map((contact, index) => {
+                  if (!contact || !contact.id) {
+                    console.warn("Invalid contact:", contact);
+                    return null;
+                  }
 
-                    <div className="flex items-center space-x-2">
-                      {activeTab === "search" &&
-                        !contacts.find((c) => c.id === contact.id) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleAddContact(contact.id)}
-                            className="text-primary-600 hover:text-primary-700"
-                          >
-                            <UserPlus className="h-4 w-4" />
-                          </Button>
-                        )}
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleStartChat(contact)}
-                        className="flex items-center space-x-1"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        <span>Chat</span>
-                      </Button>
-                    </div>
-                  </motion.div>
-                ))}
+                  return (
+                    <motion.div
+                      key={contact.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Avatar
+                          src={contact.avatar}
+                          alt={contact.firstName}
+                          size="md"
+                          fallbackText={contact.firstName}
+                          showOnlineStatus
+                          isOnline={contact.isOnline}
+                        />
+                        <div>
+                          <h3 className="font-medium text-gray-900">
+                            {contact.firstName} {contact.lastName || ""}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            @{contact.username}
+                          </p>
+                          {contact.bio && (
+                            <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
+                              {contact.bio}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        {activeTab === "search" &&
+                          !contacts.find((c) => c.id === contact.id) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleAddContact(contact.id)}
+                              className="text-primary-600 hover:text-primary-700"
+                            >
+                              <UserPlus className="h-4 w-4" />
+                            </Button>
+                          )}
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleStartChat(contact)}
+                          disabled={creatingChats.has(contact.id)}
+                          className="flex items-center space-x-1"
+                        >
+                          {creatingChats.has(contact.id) ? (
+                            <LoadingSpinner size="sm" />
+                          ) : (
+                            <>
+                              <MessageCircle className="h-4 w-4" />
+                              <span>Chat</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </div>
