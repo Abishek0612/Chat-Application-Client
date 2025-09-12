@@ -7,8 +7,8 @@ export const loginUser = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await authAPI.login(credentials);
-      localStorage.setItem("token", response.data.token);
-      socketService.connect(response.data.token);
+      localStorage.setItem("token", response.data.data.token);
+      socketService.connect(response.data.data.token);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Login failed");
@@ -21,8 +21,8 @@ export const registerUser = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     try {
       const response = await authAPI.register(userData);
-      localStorage.setItem("token", response.data.token);
-      socketService.connect(response.data.token);
+      localStorage.setItem("token", response.data.data.token);
+      socketService.connect(response.data.data.token);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -67,6 +67,20 @@ export const logoutUser = createAsyncThunk(
   }
 );
 
+export const updateProfile = createAsyncThunk(
+  "auth/updateProfile",
+  async (profileData, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.updateProfile(profileData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Profile update failed"
+      );
+    }
+  }
+);
+
 const initialState = {
   user: null,
   token: localStorage.getItem("token"),
@@ -82,7 +96,7 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    updateProfile: (state, action) => {
+    updateUserProfile: (state, action) => {
       state.user = { ...state.user, ...action.payload };
     },
   },
@@ -95,8 +109,8 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
+        state.user = action.payload.data.user;
+        state.token = action.payload.data.token;
         state.error = null;
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -113,8 +127,8 @@ const authSlice = createSlice({
       .addCase(registerUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
+        state.user = action.payload.data.user;
+        state.token = action.payload.data.token;
         state.error = null;
       })
       .addCase(registerUser.rejected, (state, action) => {
@@ -130,7 +144,7 @@ const authSlice = createSlice({
       .addCase(checkAuthStatus.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
+        state.user = action.payload.data.user;
         state.error = null;
       })
       .addCase(checkAuthStatus.rejected, (state) => {
@@ -139,6 +153,19 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.error = null;
+      })
+      .addCase(updateProfile.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = { ...state.user, ...action.payload.data.user };
+        state.error = null;
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.isAuthenticated = false;
@@ -150,5 +177,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, updateProfile } = authSlice.actions;
+export const { clearError, updateUserProfile } = authSlice.actions;
 export default authSlice.reducer;
