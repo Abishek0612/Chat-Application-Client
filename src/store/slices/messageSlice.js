@@ -47,10 +47,17 @@ export const markMessagesAsRead = createAsyncThunk(
   "message/markAsRead",
   async (chatId, { getState, rejectWithValue }) => {
     try {
-      const { message } = getState();
+      const { message, auth } = getState();
+      const currentUserId = auth.user?.id;
+
       const unreadMessages = message.messages.filter(
-        (msg) => msg.chatId === chatId && !msg.isRead
+        (msg) =>
+          msg.chatId === chatId && !msg.isRead && msg.senderId !== currentUserId
       );
+
+      if (unreadMessages.length === 0) {
+        return chatId;
+      }
 
       await Promise.all(
         unreadMessages.map((msg) => chatAPI.markAsRead(msg.id))
@@ -136,9 +143,9 @@ const messageSlice = createSlice({
       }
     },
     markChatMessagesAsRead: (state, action) => {
-      const chatId = action.payload;
+      const { chatId, currentUserId } = action.payload;
       state.messages.forEach((message) => {
-        if (message.chatId === chatId) {
+        if (message.chatId === chatId && message.senderId !== currentUserId) {
           message.isRead = true;
         }
       });
@@ -149,7 +156,6 @@ const messageSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch messages
       .addCase(fetchMessages.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -163,7 +169,6 @@ const messageSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      // Send message
       .addCase(sendMessage.fulfilled, (state, action) => {
         const message = action.payload.message;
         const existingIndex = state.messages.findIndex(
@@ -173,11 +178,9 @@ const messageSlice = createSlice({
           state.messages.push(message);
         }
       })
-      // Delete message
       .addCase(deleteMessage.fulfilled, (state, action) => {
         state.messages = state.messages.filter((m) => m.id !== action.payload);
       })
-      // Mark as read
       .addCase(markMessagesAsRead.fulfilled, (state, action) => {
         const chatId = action.payload;
         state.messages.forEach((message) => {

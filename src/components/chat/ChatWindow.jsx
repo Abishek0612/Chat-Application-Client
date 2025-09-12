@@ -14,11 +14,13 @@ import {
   markMessagesAsRead,
   addMessage,
   clearMessages,
+  markChatMessagesAsRead,
 } from "../../store/slices/messageSlice";
 import {
   fetchChatById,
   setCurrentChat,
   clearCurrentChat,
+  updateChatLastMessage,
 } from "../../store/slices/chatSlice";
 import { Phone, Video, MoreVertical, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
@@ -62,7 +64,6 @@ export const ChatWindow = () => {
       } catch (error) {
         console.error("Failed to load chat:", error);
         setError(error.message || "Failed to load chat");
-        toast.error("Failed to load chat");
       }
     };
 
@@ -103,13 +104,14 @@ export const ChatWindow = () => {
       console.log("New message received:", message);
       if (message.chatId === chatId) {
         dispatch(addMessage(message));
+        dispatch(updateChatLastMessage({ chatId, message }));
 
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 100);
 
         if (message.senderId !== user?.id) {
-          dispatch(markMessagesAsRead(chatId));
+          dispatch(markChatMessagesAsRead({ chatId, currentUserId: user?.id }));
         }
       }
     };
@@ -171,10 +173,10 @@ export const ChatWindow = () => {
   }, [messages]);
 
   const handleSendMessage = useCallback(
-    (content, type = "TEXT") => {
+    (content, type = "TEXT", fileData = null) => {
       if (
         !chatId ||
-        !content.trim() ||
+        (!content.trim() && !fileData) ||
         !socket ||
         !socketConnected ||
         typeof socket.emit !== "function"
@@ -192,6 +194,7 @@ export const ChatWindow = () => {
         receiverId: currentChat?.isGroup
           ? null
           : currentChat?.members?.find((m) => m.userId !== user?.id)?.userId,
+        ...fileData,
       };
 
       console.log("Sending message:", messageData);

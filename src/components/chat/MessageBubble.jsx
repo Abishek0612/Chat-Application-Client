@@ -79,7 +79,7 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
         );
 
       default:
-        return <p className="text-sm">{message.content}</p>;
+        return <p className="text-sm break-words">{message.content}</p>;
     }
   };
 
@@ -104,7 +104,7 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
       <div
         className={clsx(
           "relative max-w-xs lg:max-w-md group",
-          isOwn ? "order-1" : "order-2"
+          isOwn ? "ml-auto" : "mr-auto"
         )}
       >
         <motion.div
@@ -113,12 +113,16 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
           className={clsx(
             "px-4 py-2 rounded-2xl shadow-sm relative",
             isOwn
-              ? "bg-primary-600 text-white rounded-br-sm"
-              : "bg-white text-gray-900 rounded-bl-sm border border-gray-200"
+              ? "bg-blue-600 text-white ml-auto"
+              : "bg-gray-100 text-gray-900 border border-gray-200"
           )}
+          style={{
+            borderBottomRightRadius: isOwn ? "4px" : "16px",
+            borderBottomLeftRadius: isOwn ? "16px" : "4px",
+          }}
         >
           {!isOwn && showAvatar && (
-            <p className="text-xs font-medium text-primary-600 mb-1">
+            <p className="text-xs font-medium text-blue-600 mb-1">
               {message.sender?.firstName} {message.sender?.lastName}
             </p>
           )}
@@ -128,7 +132,7 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
           <div
             className={clsx(
               "flex items-center justify-between mt-1 text-xs",
-              isOwn ? "text-primary-100" : "text-gray-500"
+              isOwn ? "text-blue-100" : "text-gray-500"
             )}
           >
             <span>{formatTime(message.createdAt)}</span>
@@ -136,7 +140,7 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
               <div className="flex items-center space-x-1 ml-2">
                 {message.isRead ? (
                   <svg
-                    className="w-4 h-4"
+                    className="w-4 h-4 text-blue-200"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -148,13 +152,13 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
                   </svg>
                 ) : (
                   <svg
-                    className="w-4 h-4"
+                    className="w-4 h-4 text-blue-300"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
                     <path
                       fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                       clipRule="evenodd"
                     />
                   </svg>
@@ -164,7 +168,6 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
           </div>
         </motion.div>
 
-        {/* Message menu */}
         <div
           className={clsx(
             "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity",
@@ -208,7 +211,7 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
                     onClick={handleDeleteMessage}
                     className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 w-4" />
                     <span>Delete</span>
                   </button>
                 )}
@@ -217,6 +220,15 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
           </div>
         </div>
       </div>
+
+      {isOwn && showAvatar && (
+        <Avatar
+          src={message.sender?.avatar}
+          alt={message.sender?.firstName}
+          size="sm"
+          fallbackText={message.sender?.firstName}
+        />
+      )}
     </div>
   );
 };

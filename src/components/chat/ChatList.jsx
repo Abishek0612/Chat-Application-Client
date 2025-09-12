@@ -29,11 +29,11 @@ export const ChatList = () => {
 
   const filteredChats = React.useMemo(() => {
     if (!debouncedSearchQuery.trim()) {
-      return chats;
+      return chats || [];
     }
 
-    return chats.filter((chat) =>
-      chat.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+    return (chats || []).filter((chat) =>
+      chat?.name?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
     );
   }, [chats, debouncedSearchQuery]);
 

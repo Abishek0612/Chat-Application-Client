@@ -195,9 +195,11 @@ const chatSlice = createSlice({
       );
 
       if (chatIndex !== -1) {
-        state.chats[chatIndex].lastMessage = message;
-        state.chats[chatIndex].updatedAt = message.createdAt;
-        const chat = state.chats.splice(chatIndex, 1)[0];
+        const chat = { ...state.chats[chatIndex] };
+        chat.lastMessage = message;
+        chat.updatedAt = message.createdAt;
+
+        state.chats.splice(chatIndex, 1);
         state.chats.unshift(chat);
       }
     },
@@ -247,7 +249,6 @@ const chatSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch chats
       .addCase(fetchChats.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -263,8 +264,6 @@ const chatSlice = createSlice({
         state.error = action.payload;
         console.error("Fetch chats failed:", action.payload);
       })
-
-      // Fetch chat by ID
       .addCase(fetchChatById.pending, (state) => {
         state.error = null;
       })
@@ -293,8 +292,6 @@ const chatSlice = createSlice({
         state.error = action.payload;
         console.error("Fetch chat by ID failed:", action.payload);
       })
-
-      // Create chat
       .addCase(createChat.pending, (state) => {
         state.error = null;
       })
@@ -341,16 +338,12 @@ const chatSlice = createSlice({
         state.error = action.payload;
         console.error("Create chat failed:", action.payload);
       })
-
-      // Fetch contacts
       .addCase(fetchContacts.fulfilled, (state, action) => {
         state.contacts = action.payload.contacts || [];
       })
       .addCase(fetchContacts.rejected, (state, action) => {
         console.error("Fetch contacts failed:", action.payload);
       })
-
-      // Add contact
       .addCase(addContact.fulfilled, (state, action) => {
         if (action.payload && action.payload.chat) {
           const newChat = action.payload.chat;

@@ -32,10 +32,29 @@ class UploadService {
   }
 
   async uploadAvatar(file, onProgress) {
-    return this.uploadFile(file, {
-      folder: "avatars",
-      onProgress,
-    });
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    try {
+      const response = await api.post("/users/avatar", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (progressEvent) => {
+          if (onProgress) {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            onProgress(percentCompleted);
+          }
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error("Avatar upload error:", error);
+      throw error;
+    }
   }
 
   async uploadChatFile(file, onProgress) {
@@ -54,7 +73,7 @@ class UploadService {
 
   validateFile(file, options = {}) {
     const {
-      maxSize = 10 * 1024 * 1024, // 10MB default
+      maxSize = 10 * 1024 * 1024,
       allowedTypes = ["image/*", "application/pdf", "text/*"],
     } = options;
 

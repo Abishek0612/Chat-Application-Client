@@ -38,14 +38,12 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
       <AnimatePresence initial={false}>
         {Object.entries(messageGroups).map(([date, dayMessages]) => (
           <div key={date}>
-            {/* Date separator */}
             <div className="flex justify-center mb-4">
               <span className="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full">
                 {formatDate(date, { dateOnly: true })}
               </span>
             </div>
 
-            {/* Messages for this date */}
             {dayMessages.map((message, index) => (
               <motion.div
                 key={message.id}
