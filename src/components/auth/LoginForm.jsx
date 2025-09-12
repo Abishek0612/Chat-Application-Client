@@ -53,49 +53,7 @@ export const LoginForm = () => {
   };
 
   const handleGoogleLogin = () => {
-    const width = 500;
-    const height = 600;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2.5;
-
-    const popup = window.open(
-      `${import.meta.env.VITE_API_URL}/api/auth/google`,
-      "google-auth",
-      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
-    );
-
-    const handleMessage = (event) => {
-      if (event.origin !== window.location.origin) return;
-
-      if (event.data.type === "GOOGLE_AUTH_SUCCESS") {
-        popup.close();
-        localStorage.setItem("token", event.data.token);
-        dispatch(checkAuthStatus()).then((result) => {
-          if (checkAuthStatus.fulfilled.match(result)) {
-            navigate("/chat");
-          }
-        });
-        window.removeEventListener("message", handleMessage);
-      } else if (event.data.type === "GOOGLE_AUTH_ERROR") {
-        popup.close();
-        toast.error("Google authentication failed");
-        window.removeEventListener("message", handleMessage);
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-
-    if (!popup) {
-      toast.error("Popup blocked. Please allow popups for this site.");
-      return;
-    }
-
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed);
-        window.removeEventListener("message", handleMessage);
-      }
-    }, 1000);
+    window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`;
   };
 
   return (

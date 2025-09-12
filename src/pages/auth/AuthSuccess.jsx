@@ -17,7 +17,7 @@ const AuthSuccess = () => {
     const error = searchParams.get("error");
 
     if (error) {
-      toast.error("Authentication failed");
+      toast.error("Google authentication failed");
       navigate("/login");
       return;
     }
@@ -26,7 +26,7 @@ const AuthSuccess = () => {
       localStorage.setItem("token", token);
 
       dispatch(checkAuthStatus()).then((result) => {
-        if (result.type === "auth/checkStatus/fulfilled") {
+        if (checkAuthStatus.fulfilled.match(result)) {
           toast.success("Login successful!");
           navigate("/chat");
         } else {
@@ -48,12 +48,7 @@ const AuthSuccess = () => {
         className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md w-full mx-4"
       >
         <div className="flex items-center justify-center mb-6">
-          <div className="relative">
-            <CheckCircle className="h-16 w-16 text-green-500" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <LoadingSpinner size="sm" className="text-green-600" />
-            </div>
-          </div>
+          <CheckCircle className="h-16 w-16 text-green-500" />
         </div>
 
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
