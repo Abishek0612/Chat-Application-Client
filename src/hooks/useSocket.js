@@ -33,9 +33,19 @@ export const useSocket = () => {
             setError("Failed to connect");
           };
 
+          const handleUserOnline = (data) => {
+            console.log("User came online:", data);
+          };
+
+          const handleUserOffline = (data) => {
+            console.log("User went offline:", data);
+          };
+
           socketRef.current.on("connect", handleConnect);
           socketRef.current.on("disconnect", handleDisconnect);
           socketRef.current.on("connect_error", handleConnectError);
+          socketRef.current.on("userOnline", handleUserOnline);
+          socketRef.current.on("userOffline", handleUserOffline);
 
           setIsConnected(socketRef.current.connected);
         }

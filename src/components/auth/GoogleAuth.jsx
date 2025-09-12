@@ -15,9 +15,6 @@ const GoogleAuth = () => {
     const token = searchParams.get("token");
     const error = searchParams.get("error");
 
-    console.log("Google Auth - Token:", token);
-    console.log("Google Auth - Error:", error);
-
     if (error) {
       toast.error("Google authentication failed");
       navigate("/login");
@@ -29,7 +26,6 @@ const GoogleAuth = () => {
 
       dispatch(checkAuthStatus()).then((result) => {
         if (checkAuthStatus.fulfilled.match(result)) {
-          toast.success("Welcome! Login successful");
           navigate("/chat");
         } else {
           console.error("Auth check failed:", result);
@@ -42,7 +38,6 @@ const GoogleAuth = () => {
       navigate("/login");
     }
   }, [searchParams, navigate, dispatch]);
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <motion.div

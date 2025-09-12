@@ -20,6 +20,7 @@ import {
 } from "../../store/slices/chatSlice";
 import { userAPI } from "../../store/api/userApi";
 import { useDebounce } from "../../hooks/useDebounce";
+import { formatTime } from "../../utils/formatters";
 import toast from "react-hot-toast";
 
 const Contacts = () => {
@@ -29,51 +30,72 @@ const Contacts = () => {
   const { user } = useSelector((state) => state.auth);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [allUsers, setAllUsers] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [activeTab, setActiveTab] = useState("contacts");
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [activeTab, setActiveTab] = useState("all-users");
   const [creatingChats, setCreatingChats] = useState(new Set());
+  const [sendingRequests, setSendingRequests] = useState(new Set());
 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   useEffect(() => {
-    dispatch(fetchContacts());
+    const fetchAllUsers = async () => {
+      setIsLoadingUsers(true);
+      try {
+        console.log("Fetching all users...");
+        const response = await userAPI.getUsers();
+        console.log("Users API response:", response);
+
+        const users = response.data?.data?.users || response.data?.users || [];
+        console.log("Extracted users:", users);
+
+        setAllUsers(users);
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+        toast.error("Failed to load users");
+        setAllUsers([]);
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    };
+
+    const fetchUserContacts = async () => {
+      try {
+        await dispatch(fetchContacts()).unwrap();
+      } catch (error) {
+        console.error("Failed to fetch contacts:", error);
+      }
+    };
+
+    fetchAllUsers();
+    fetchUserContacts();
   }, [dispatch]);
 
   useEffect(() => {
     if (debouncedSearch.trim()) {
-      searchUsers(debouncedSearch);
+      setIsSearching(true);
+      const filtered = allUsers.filter(
+        (user) =>
+          user.firstName
+            ?.toLowerCase()
+            .includes(debouncedSearch.toLowerCase()) ||
+          user.lastName
+            ?.toLowerCase()
+            .includes(debouncedSearch.toLowerCase()) ||
+          user.username
+            ?.toLowerCase()
+            .includes(debouncedSearch.toLowerCase()) ||
+          user.email?.toLowerCase().includes(debouncedSearch.toLowerCase())
+      );
+      setSearchResults(filtered);
+      setIsSearching(false);
     } else {
       setSearchResults([]);
-      setActiveTab("contacts");
-    }
-  }, [debouncedSearch]);
-
-  const searchUsers = async (query) => {
-    if (query.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const response = await userAPI.searchUsers(query);
-      console.log("Search response:", response.data);
-
-      const users = response.data.users || [];
-      setSearchResults(users);
-
-      if (users.length > 0) {
-        setActiveTab("search");
-      }
-    } catch (error) {
-      console.error("Search error:", error);
-      toast.error("Failed to search users");
-      setSearchResults([]);
-    } finally {
       setIsSearching(false);
     }
-  };
+  }, [debouncedSearch, allUsers]);
 
   const handleStartChat = async (contactUser) => {
     if (!contactUser || !contactUser.id) {
@@ -96,38 +118,27 @@ const Contacts = () => {
         members: [contactUser.id],
       };
 
-      console.log("Sending chat data:", chatData);
-
       const result = await dispatch(createChat(chatData)).unwrap();
       console.log("Chat creation result:", result);
 
       let chatId;
 
-      if (result && result.data && result.data.chat && result.data.chat.id) {
+      if (result?.data?.chat?.id) {
         chatId = result.data.chat.id;
-      } else if (result && result.chat && result.chat.id) {
+      } else if (result?.chat?.id) {
         chatId = result.chat.id;
-      } else if (result && result.id) {
+      } else if (result?.id) {
         chatId = result.id;
       } else {
         console.error("Invalid response structure:", result);
         throw new Error("Invalid response from server");
       }
 
-      console.log("Navigating to chat:", chatId);
       navigate(`/chat/${chatId}`);
       toast.success("Chat started!");
     } catch (error) {
       console.error("Failed to start chat:", error);
-
-      let errorMessage = "Failed to start chat";
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
-      }
-
-      toast.error(errorMessage);
+      toast.error(error.message || "Failed to start chat");
     } finally {
       setCreatingChats((prev) => {
         const newSet = new Set(prev);
@@ -137,27 +148,57 @@ const Contacts = () => {
     }
   };
 
-  const handleAddContact = async (userId) => {
-    if (!userId) {
-      toast.error("Invalid user ID");
+  const handleSendRequest = async (targetUser) => {
+    if (!targetUser || !targetUser.id || sendingRequests.has(targetUser.id)) {
       return;
     }
 
+    setSendingRequests((prev) => new Set([...prev, targetUser.id]));
+
     try {
-      await dispatch(addContact(userId)).unwrap();
-      toast.success("Contact added!");
-      dispatch(fetchContacts());
+      const response = await userAPI.sendFriendRequest(targetUser.id);
+      console.log("Friend request sent:", response);
+      toast.success(`Friend request sent to ${targetUser.firstName}`);
+
+      setAllUsers((prev) =>
+        prev.map((user) =>
+          user.id === targetUser.id
+            ? { ...user, friendRequestSent: true }
+            : user
+        )
+      );
     } catch (error) {
-      console.error("Add contact error:", error);
-      toast.error("Failed to add contact");
+      console.error("Failed to send friend request:", error);
+
+      const errorMessage =
+        error.response?.data?.message || "Failed to send friend request";
+      toast.error(errorMessage);
+    } finally {
+      setSendingRequests((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(targetUser.id);
+        return newSet;
+      });
     }
   };
 
-  const contactsToShow = activeTab === "contacts" ? contacts : searchResults;
+  const isContact = (userId) => {
+    return contacts.some((contact) => contact.id === userId);
+  };
+
+  const usersToShow =
+    activeTab === "contacts"
+      ? contacts
+      : searchQuery.trim()
+      ? searchResults
+      : allUsers;
+
+  const filteredUsers = usersToShow.filter(
+    (contact) => contact?.id !== user?.id
+  );
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center space-x-3">
           <Button
@@ -168,33 +209,40 @@ const Contacts = () => {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-semibold text-gray-900">
-            Start New Chat
-          </h1>
+          <h1 className="text-xl font-semibold text-gray-900">Find People</h1>
         </div>
       </div>
 
-      {/* Search Bar */}
       <div className="p-4 bg-white border-b border-gray-200">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            type="text"
-            placeholder="Search contacts or username..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-          {isSearching && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <LoadingSpinner size="sm" />
-            </div>
-          )}
-        </div>
+        <Input
+          type="text"
+          placeholder="Search by name, username, or email..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          leftIcon={<Search />}
+        />
+        {isSearching && (
+          <div className="mt-2 flex items-center justify-center">
+            <LoadingSpinner size="sm" />
+            <span className="ml-2 text-sm text-gray-500">Searching...</span>
+          </div>
+        )}
       </div>
 
-      {/* Tabs */}
       <div className="flex bg-white border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab("all-users")}
+          className={`flex-1 px-4 py-3 text-sm font-medium ${
+            activeTab === "all-users"
+              ? "text-primary-600 border-b-2 border-primary-600 bg-primary-50"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          <div className="flex items-center justify-center space-x-2">
+            <Users className="h-4 w-4" />
+            <span>All Users ({isLoadingUsers ? "..." : allUsers.length})</span>
+          </div>
+        </button>
         <button
           onClick={() => setActiveTab("contacts")}
           className={`flex-1 px-4 py-3 text-sm font-medium ${
@@ -204,34 +252,21 @@ const Contacts = () => {
           }`}
         >
           <div className="flex items-center justify-center space-x-2">
-            <Users className="h-4 w-4" />
-            <span>Contacts ({contacts.length})</span>
-          </div>
-        </button>
-        <button
-          onClick={() => setActiveTab("search")}
-          className={`flex-1 px-4 py-3 text-sm font-medium ${
-            activeTab === "search"
-              ? "text-primary-600 border-b-2 border-primary-600 bg-primary-50"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          <div className="flex items-center justify-center space-x-2">
-            <Search className="h-4 w-4" />
-            <span>Search Users ({searchResults.length})</span>
+            <MessageCircle className="h-4 w-4" />
+            <span>My Contacts ({contacts.length})</span>
           </div>
         </button>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto bg-white">
-        {isLoading ? (
+        {isLoadingUsers || isLoading ? (
           <div className="flex items-center justify-center py-8">
             <LoadingSpinner size="md" />
+            <span className="ml-2">Loading users...</span>
           </div>
         ) : (
           <div className="p-4">
-            {contactsToShow.length === 0 ? (
+            {filteredUsers.length === 0 ? (
               <div className="text-center py-8">
                 {activeTab === "contacts" ? (
                   <div>
@@ -242,37 +277,29 @@ const Contacts = () => {
                     </p>
                   </div>
                 ) : searchQuery.trim() ? (
-                  isSearching ? (
-                    <div>
-                      <LoadingSpinner size="md" className="mx-auto mb-3" />
-                      <p className="text-gray-500">Searching...</p>
-                    </div>
-                  ) : (
-                    <div>
-                      <Search className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500">
-                        No users found for "{searchQuery}"
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        Try searching with a different username or email
-                      </p>
-                    </div>
-                  )
-                ) : (
                   <div>
                     <Search className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">Search for users</p>
+                    <p className="text-gray-500">
+                      No users found for "{searchQuery}"
+                    </p>
                     <p className="text-sm text-gray-400">
-                      Enter a username or email to find people
+                      Try searching with a different username or email
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <Users className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">No other users found</p>
+                    <p className="text-sm text-gray-400">
+                      More users will appear here when they register
                     </p>
                   </div>
                 )}
               </div>
             ) : (
               <div className="space-y-2">
-                {contactsToShow.map((contact, index) => {
+                {filteredUsers.map((contact, index) => {
                   if (!contact || !contact.id) {
-                    console.warn("Invalid contact:", contact);
                     return null;
                   }
 
@@ -305,21 +332,37 @@ const Contacts = () => {
                               {contact.bio}
                             </p>
                           )}
+                          <p className="text-xs text-gray-400">
+                            {contact.isOnline
+                              ? "Online"
+                              : contact.lastSeen
+                              ? `Last seen ${formatTime(contact.lastSeen)}`
+                              : "Offline"}
+                          </p>
                         </div>
                       </div>
 
                       <div className="flex items-center space-x-2">
-                        {activeTab === "search" &&
-                          !contacts.find((c) => c.id === contact.id) && (
+                        {activeTab === "all-users" &&
+                          !isContact(contact.id) && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleAddContact(contact.id)}
+                              onClick={() => handleSendRequest(contact)}
+                              disabled={sendingRequests.has(contact.id)}
                               className="text-primary-600 hover:text-primary-700"
                             >
-                              <UserPlus className="h-4 w-4" />
+                              {sendingRequests.has(contact.id) ? (
+                                <LoadingSpinner size="sm" />
+                              ) : (
+                                <>
+                                  <UserPlus className="h-4 w-4 mr-1" />
+                                  Add
+                                </>
+                              )}
                             </Button>
                           )}
+
                         <Button
                           variant="primary"
                           size="sm"
@@ -346,14 +389,13 @@ const Contacts = () => {
         )}
       </div>
 
-      {/* Quick Actions */}
       <div className="p-4 bg-gray-50 border-t border-gray-200">
         <div className="grid grid-cols-2 gap-3">
           <Button
             variant="secondary"
             className="flex items-center justify-center space-x-2"
             onClick={() => {
-              toast.info("Group chat feature coming soon!");
+              toast("Group chat feature coming soon!");
             }}
           >
             <Users className="h-4 w-4" />
@@ -363,7 +405,7 @@ const Contacts = () => {
             variant="secondary"
             className="flex items-center justify-center space-x-2"
             onClick={() => {
-              toast.info("Add by contact feature coming soon!");
+              toast("Add by contact feature coming soon!");
             }}
           >
             <UserPlus className="h-4 w-4" />

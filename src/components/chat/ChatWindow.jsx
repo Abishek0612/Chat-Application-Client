@@ -22,6 +22,7 @@ import {
 } from "../../store/slices/chatSlice";
 import { Phone, Video, MoreVertical, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
+import { formatTime } from "../../utils/formatters";
 
 export const ChatWindow = () => {
   const { chatId } = useParams();
@@ -298,8 +299,9 @@ export const ChatWindow = () => {
                 <p className="text-sm text-gray-500 truncate">
                   {currentChat.isOnline
                     ? "Online"
-                    : currentChat.lastSeen &&
-                      `Last seen ${currentChat.lastSeen}`}
+                    : currentChat.lastSeen
+                    ? `Last seen ${formatTime(currentChat.lastSeen)}`
+                    : "Offline"}
                 </p>
                 {!socketConnected && (
                   <span className="text-xs text-red-500 flex-shrink-0">
@@ -315,7 +317,11 @@ export const ChatWindow = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => toast.info("Voice call feature coming soon!")}
+            onClick={() =>
+              toast("Voice call feature coming soon!", {
+                duration: 3000,
+              })
+            }
             className="rounded-full p-2 hidden sm:block"
           >
             <Phone className="h-5 w-5" />
@@ -323,7 +329,11 @@ export const ChatWindow = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => toast.info("Video call feature coming soon!")}
+            onClick={() =>
+              toast("Video call feature coming soon!", {
+                duration: 3000,
+              })
+            }
             className="rounded-full p-2 hidden sm:block"
           >
             <Video className="h-5 w-5" />

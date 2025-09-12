@@ -12,4 +12,10 @@ export const userAPI = {
     api.post("/users/avatar", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
+  sendFriendRequest: (userId) => api.post(`/users/friend-request/${userId}`),
+  acceptFriendRequest: (requestId) =>
+    api.post(`/users/friend-request/${requestId}/accept`),
+  rejectFriendRequest: (requestId) =>
+    api.post(`/users/friend-request/${requestId}/reject`),
+  getFriendRequests: () => api.get("/users/friend-requests"),
 };

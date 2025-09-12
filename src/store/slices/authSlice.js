@@ -43,7 +43,7 @@ export const checkAuthStatus = createAsyncThunk(
 
       const response = await authAPI.getProfile();
       socketService.connect(token);
-      return response.data;
+      return { ...response.data, skipToast: true };
     } catch (error) {
       localStorage.removeItem("token");
       return rejectWithValue("Authentication failed");

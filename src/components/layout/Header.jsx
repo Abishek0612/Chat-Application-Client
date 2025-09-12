@@ -10,12 +10,12 @@ import {
   LogOut,
   MessageCircle,
   Users,
-  Bell,
 } from "lucide-react";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
+import { NotificationCenter } from "../notifications/NotificationCenter";
 import { logoutUser } from "../../store/slices/authSlice";
 import toast from "react-hot-toast";
 
@@ -53,12 +53,10 @@ export const Header = () => {
       <header className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            {/* Mobile menu button */}
             <Button variant="ghost" size="sm" className="md:hidden">
               <Menu className="h-5 w-5" />
             </Button>
 
-            {/* Page title */}
             <div className="flex items-center space-x-2">
               <h1 className="text-xl font-semibold text-gray-900">
                 {getPageTitle()}
@@ -67,7 +65,6 @@ export const Header = () => {
           </div>
 
           <div className="flex items-center space-x-3">
-            {/* Search button */}
             <Button
               variant="ghost"
               size="sm"
@@ -77,7 +74,6 @@ export const Header = () => {
               <Search className="h-5 w-5" />
             </Button>
 
-            {/* Navigation buttons */}
             <div className="hidden md:flex items-center space-x-1">
               <Button
                 variant={
@@ -104,12 +100,8 @@ export const Header = () => {
               </Button>
             </div>
 
-            {/* Notifications */}
-            <Button variant="ghost" size="sm">
-              <Bell className="h-5 w-5" />
-            </Button>
+            <NotificationCenter />
 
-            {/* Profile dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
@@ -174,7 +166,6 @@ export const Header = () => {
         </div>
       </header>
 
-      {/* Search Modal */}
       <Modal
         isOpen={showSearchModal}
         onClose={() => setShowSearchModal(false)}

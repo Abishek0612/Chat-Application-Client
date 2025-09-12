@@ -42,7 +42,6 @@ export const LoginForm = () => {
     try {
       const result = await dispatch(loginUser(formData));
       if (loginUser.fulfilled.match(result)) {
-        toast.success("Login successful!");
         navigate("/chat");
       } else {
         toast.error(result.payload || "Login failed");
