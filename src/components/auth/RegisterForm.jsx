@@ -6,7 +6,6 @@ import { Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { registerUser, clearError } from "../../store/slices/authSlice";
-import { useNavigate } from "react-router-dom";
 import { checkAuthStatus } from "../../store/slices/authSlice";
 import toast from "react-hot-toast";
 
