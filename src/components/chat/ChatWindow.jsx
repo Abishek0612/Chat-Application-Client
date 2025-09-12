@@ -35,6 +35,7 @@ export const ChatWindow = () => {
 
   const [typingUsers, setTypingUsers] = useState([]);
   const [error, setError] = useState(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const { currentChat } = useSelector((state) => state.chat);
   const { messages, isLoading: messagesLoading } = useSelector(
@@ -50,11 +51,17 @@ export const ChatWindow = () => {
       if (!chatId) {
         dispatch(clearCurrentChat());
         dispatch(clearMessages());
+        setIsInitialLoad(false);
         return;
       }
 
       try {
+        setError(null);
+        setIsInitialLoad(true);
+
         dispatch(clearMessages());
+
+        console.log("Loading chat data for chatId:", chatId);
 
         const [chatResult, messagesResult] = await Promise.allSettled([
           dispatch(fetchChatById(chatId)).unwrap(),
@@ -62,16 +69,28 @@ export const ChatWindow = () => {
         ]);
 
         if (chatResult.status === "fulfilled") {
-          dispatch(markMessagesAsRead(chatId));
-          dispatch(fetchChats());
+          console.log("Chat loaded successfully:", chatResult.value);
+          setTimeout(() => {
+            dispatch(markMessagesAsRead(chatId));
+          }, 500);
+        } else {
+          console.error("Failed to load chat:", chatResult.reason);
+          setError(chatResult.reason || "Failed to load chat");
         }
 
         if (messagesResult.status === "rejected") {
           console.error("Failed to load messages:", messagesResult.reason);
+          if (chatResult.status === "rejected") {
+            setError("Failed to load chat data");
+          }
         }
+
+        dispatch(fetchChats());
       } catch (error) {
-        console.error("Failed to load chat:", error);
+        console.error("Failed to load chat data:", error);
         setError(error.message || "Failed to load chat");
+      } finally {
+        setIsInitialLoad(false);
       }
     };
 
@@ -110,18 +129,24 @@ export const ChatWindow = () => {
 
     const handleNewMessage = (message) => {
       console.log("New message received:", message);
+
       if (message.chatId === chatId) {
         dispatch(addMessage(message));
         dispatch(updateChatLastMessage({ chatId, message }));
-        dispatch(fetchChats());
 
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         }, 100);
 
         if (message.senderId !== user?.id) {
-          dispatch(markChatMessagesAsRead({ chatId, currentUserId: user?.id }));
+          setTimeout(() => {
+            dispatch(
+              markChatMessagesAsRead({ chatId, currentUserId: user?.id })
+            );
+          }, 1000);
         }
+
+        dispatch(fetchChats());
       }
     };
 
@@ -174,18 +199,18 @@ export const ChatWindow = () => {
   }, [socket, chatId, dispatch, user?.id]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
-
-    return () => clearTimeout(timer);
+    if (messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
   }, [messages]);
 
   const handleSendMessage = useCallback(
     (content, type = "TEXT", fileData = null) => {
       if (
         !chatId ||
-        (!content.trim() && !fileData) ||
+        (!content?.trim() && !fileData?.fileUrl) ||
         !socket ||
         !socketConnected ||
         typeof socket.emit !== "function"
@@ -197,13 +222,17 @@ export const ChatWindow = () => {
       }
 
       const messageData = {
-        content: content.trim(),
+        content: content?.trim() || "",
         type,
         chatId,
         receiverId: currentChat?.isGroup
           ? null
           : currentChat?.members?.find((m) => m.userId !== user?.id)?.userId,
-        ...fileData,
+        ...(fileData && {
+          fileUrl: fileData.fileUrl,
+          fileName: fileData.fileName,
+          fileSize: fileData.fileSize,
+        }),
       };
 
       console.log("Sending message:", messageData);
@@ -234,7 +263,7 @@ export const ChatWindow = () => {
     }
   }, [socket, socketConnected, chatId]);
 
-  if (messagesLoading) {
+  if (isInitialLoad || messagesLoading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-white">
         <div className="text-center">
@@ -254,7 +283,18 @@ export const ChatWindow = () => {
             Something went wrong
           </h3>
           <p className="text-gray-500 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>Refresh Page</Button>
+          <Button
+            onClick={() => {
+              setError(null);
+              setIsInitialLoad(true);
+              if (chatId) {
+                dispatch(fetchChatById(chatId));
+                dispatch(fetchMessages({ chatId }));
+              }
+            }}
+          >
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -278,6 +318,7 @@ export const ChatWindow = () => {
 
   return (
     <div className="flex flex-col h-full bg-white">
+      {/* Chat Header */}
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -356,6 +397,7 @@ export const ChatWindow = () => {
         </div>
       </motion.div>
 
+      {/* Messages Area */}
       <div className="flex-1 overflow-hidden relative min-h-0">
         <div className="h-full flex flex-col">
           <div className="flex-1 overflow-y-auto">
@@ -382,6 +424,7 @@ export const ChatWindow = () => {
         </div>
       </div>
 
+      {/* Message Input */}
       <div className="flex-shrink-0">
         <MessageInput
           onSendMessage={handleSendMessage}

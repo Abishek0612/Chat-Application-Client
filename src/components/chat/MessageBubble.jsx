@@ -6,8 +6,20 @@ import { Button } from "../ui/Button";
 import { formatTime } from "../../utils/formatters";
 import { clsx } from "clsx";
 
-export const MessageBubble = ({ message, isOwn, showAvatar }) => {
+export const MessageBubble = ({
+  message,
+  isOwn,
+  showAvatar,
+  currentUserId,
+}) => {
   const [showMenu, setShowMenu] = useState(false);
+
+  if (!message || !message.id) {
+    console.warn("Invalid message in MessageBubble:", message);
+    return null;
+  }
+
+  const messageIsOwn = message.senderId === currentUserId;
 
   const handleCopyMessage = () => {
     navigator.clipboard.writeText(message.content);
@@ -35,6 +47,10 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
               alt="Shared image"
               className="max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
               onClick={() => window.open(message.fileUrl, "_blank")}
+              onError={(e) => {
+                console.error("Failed to load image:", message.fileUrl);
+                e.target.style.display = "none";
+              }}
             />
             {message.content && <p className="text-sm">{message.content}</p>}
           </div>
@@ -60,7 +76,7 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {message.fileName}
+                {message.fileName || "Unknown file"}
               </p>
               <p className="text-xs text-gray-500">
                 {message.fileSize &&
@@ -78,8 +94,46 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
           </div>
         );
 
+      case "VIDEO":
+        return (
+          <div className="space-y-2">
+            <video
+              src={message.fileUrl}
+              controls
+              className="max-w-xs rounded-lg"
+              onError={(e) => {
+                console.error("Failed to load video:", message.fileUrl);
+              }}
+            >
+              Your browser does not support the video tag.
+            </video>
+            {message.content && <p className="text-sm">{message.content}</p>}
+          </div>
+        );
+
+      case "AUDIO":
+        return (
+          <div className="space-y-2">
+            <audio
+              src={message.fileUrl}
+              controls
+              className="max-w-xs"
+              onError={(e) => {
+                console.error("Failed to load audio:", message.fileUrl);
+              }}
+            >
+              Your browser does not support the audio tag.
+            </audio>
+            {message.content && <p className="text-sm">{message.content}</p>}
+          </div>
+        );
+
       default:
-        return <p className="text-sm break-words">{message.content}</p>;
+        return (
+          <p className="text-sm break-words whitespace-pre-wrap">
+            {message.content}
+          </p>
+        );
     }
   };
 
@@ -87,43 +141,44 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
     <div
       className={clsx(
         "flex space-x-2 mb-4",
-        isOwn ? "justify-end flex-row-reverse" : "justify-start"
+        messageIsOwn ? "justify-end" : "justify-start"
       )}
     >
-      {!isOwn && showAvatar && (
+      {!messageIsOwn && showAvatar && (
         <Avatar
           src={message.sender?.avatar}
-          alt={message.sender?.firstName}
+          alt={message.sender?.firstName || "User"}
           size="sm"
-          fallbackText={message.sender?.firstName}
+          fallbackText={message.sender?.firstName?.charAt(0) || "U"}
         />
       )}
 
-      {!isOwn && !showAvatar && <div className="w-8" />}
+      {!messageIsOwn && !showAvatar && <div className="w-8" />}
 
       <div
         className={clsx(
           "relative max-w-xs lg:max-w-md group",
-          isOwn ? "mr-2" : "ml-2"
+          messageIsOwn ? "mr-2" : "ml-2"
         )}
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.2 }}
           className={clsx(
             "px-4 py-2 rounded-2xl shadow-sm relative",
-            isOwn
-              ? "bg-blue-600 text-white"
+            messageIsOwn
+              ? "bg-blue-600 text-white ml-auto"
               : "bg-gray-100 text-gray-900 border border-gray-200"
           )}
           style={{
-            borderBottomRightRadius: isOwn ? "4px" : "16px",
-            borderBottomLeftRadius: isOwn ? "16px" : "4px",
+            borderBottomRightRadius: messageIsOwn ? "4px" : "16px",
+            borderBottomLeftRadius: messageIsOwn ? "16px" : "4px",
           }}
         >
-          {!isOwn && showAvatar && (
+          {!messageIsOwn && showAvatar && message.sender && (
             <p className="text-xs font-medium text-blue-600 mb-1">
-              {message.sender?.firstName} {message.sender?.lastName}
+              {message.sender.firstName} {message.sender.lastName || ""}
             </p>
           )}
 
@@ -131,12 +186,13 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
 
           <div
             className={clsx(
-              "flex items-center justify-between mt-1 text-xs",
-              isOwn ? "text-blue-100" : "text-gray-500"
+              "flex items-center justify-end mt-1 text-xs",
+              messageIsOwn ? "text-blue-100" : "text-gray-500"
             )}
           >
             <span>{formatTime(message.createdAt)}</span>
-            {isOwn && (
+
+            {messageIsOwn && (
               <div className="flex items-center space-x-1 ml-2">
                 {message.isRead ? (
                   <svg
@@ -171,7 +227,7 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
         <div
           className={clsx(
             "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity",
-            isOwn ? "-left-8" : "-right-8"
+            messageIsOwn ? "-left-8" : "-right-8"
           )}
         >
           <div className="relative">
@@ -190,8 +246,9 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
                 animate={{ opacity: 1, scale: 1 }}
                 className={clsx(
                   "absolute top-8 z-10 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[120px]",
-                  isOwn ? "right-0" : "left-0"
+                  messageIsOwn ? "right-0" : "left-0"
                 )}
+                onBlur={() => setShowMenu(false)}
               >
                 <button
                   onClick={handleCopyMessage}
@@ -206,12 +263,12 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
                   <span>Reply</span>
                 </button>
 
-                {isOwn && (
+                {messageIsOwn && (
                   <button
                     onClick={handleDeleteMessage}
                     className="flex items-center space-x-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                   >
-                    <Trash2 className="w-4 w-4" />
+                    <Trash2 className="w-4 h-4" />
                     <span>Delete</span>
                   </button>
                 )}
@@ -221,12 +278,12 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
         </div>
       </div>
 
-      {isOwn && showAvatar && (
+      {messageIsOwn && showAvatar && (
         <Avatar
           src={message.sender?.avatar}
-          alt={message.sender?.firstName}
+          alt={message.sender?.firstName || "You"}
           size="sm"
-          fallbackText={message.sender?.firstName}
+          fallbackText={message.sender?.firstName?.charAt(0) || "Y"}
         />
       )}
     </div>

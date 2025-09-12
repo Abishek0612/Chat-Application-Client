@@ -28,6 +28,20 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
     return <MessageSkeleton />;
   }
 
+  if (!messages || messages.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="text-gray-400 text-4xl mb-3">💬</div>
+          <p className="text-gray-500">No messages yet</p>
+          <p className="text-sm text-gray-400 mt-1">
+            Start the conversation with a message
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const messageGroups = groupMessagesByDate(messages);
 
   return (
@@ -38,6 +52,7 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
       <AnimatePresence initial={false}>
         {Object.entries(messageGroups).map(([date, dayMessages]) => (
           <div key={date}>
+            {/* Date separator */}
             <div className="flex justify-center mb-4">
               <span className="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full">
                 {formatDate(date, { dateOnly: true })}
@@ -45,13 +60,19 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
             </div>
 
             {dayMessages.map((message, index) => {
+              if (!message || !message.id) {
+                console.warn("Invalid message object:", message);
+                return null;
+              }
+
               const isOwn = message.senderId === currentUserId;
+
               const showAvatar =
                 index === 0 ||
                 dayMessages[index - 1]?.senderId !== message.senderId ||
                 new Date(message.createdAt) -
                   new Date(dayMessages[index - 1]?.createdAt) >
-                  5 * 60 * 1000;
+                  5 * 60 * 1000; // 5 minutes
 
               return (
                 <motion.div
@@ -59,12 +80,17 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  transition={{
+                    duration: 0.3,
+                    delay: index * 0.05,
+                    ease: "easeOut",
+                  }}
                 >
                   <MessageBubble
                     message={message}
                     isOwn={isOwn}
                     showAvatar={showAvatar}
+                    currentUserId={currentUserId}
                   />
                 </motion.div>
               );
