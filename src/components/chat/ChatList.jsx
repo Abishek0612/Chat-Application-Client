@@ -41,9 +41,7 @@ export const ChatList = () => {
     (chat) => {
       try {
         dispatch(setCurrentChat(chat));
-
         navigate(`/chat/${chat.id}`);
-
         console.log("Selected chat:", chat.id);
       } catch (error) {
         console.error("Error selecting chat:", error);
@@ -94,7 +92,6 @@ export const ChatList = () => {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-semibold text-gray-900">Chats</h1>
@@ -109,7 +106,6 @@ export const ChatList = () => {
           </Button>
         </div>
 
-        {/* Search */}
         <Input
           type="text"
           placeholder="Search chats..."
@@ -120,7 +116,6 @@ export const ChatList = () => {
         />
       </div>
 
-      {/* Chat list */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         {filteredChats.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-8 text-center">
@@ -223,35 +218,36 @@ export const ChatList = () => {
                         )}
                       </p>
 
-                      {chat.lastMessage?.senderId === user?.id && (
-                        <div className="flex-shrink-0 ml-2">
-                          {chat.lastMessage.isRead ? (
-                            <svg
-                              className="w-4 h-4 text-blue-500"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          ) : (
-                            <svg
-                              className="w-4 h-4 text-gray-400"
-                              fill="currentColor"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                      )}
+                      {chat.lastMessage?.senderId === user?.id &&
+                        chat.lastMessage && (
+                          <div className="flex-shrink-0 ml-2">
+                            {chat.lastMessage.isRead ? (
+                              <svg
+                                className="w-4 h-4 text-blue-500"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            ) : (
+                              <svg
+                                className="w-4 h-4 text-gray-400"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            )}
+                          </div>
+                        )}
                     </div>
                   </div>
                 </div>

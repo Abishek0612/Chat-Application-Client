@@ -30,9 +30,7 @@ export const ChatWindow = () => {
   const messagesEndRef = useRef(null);
 
   const [typingUsers, setTypingUsers] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [socketConnected, setSocketConnected] = useState(false);
 
   const { currentChat } = useSelector((state) => state.chat);
   const { messages, isLoading: messagesLoading } = useSelector(
@@ -41,45 +39,7 @@ export const ChatWindow = () => {
   const { user } = useSelector((state) => state.auth);
 
   const socket = useSocket();
-
-  useEffect(() => {
-    if (socket) {
-      const handleConnect = () => {
-        console.log("Socket connected");
-        setSocketConnected(true);
-        setError(null);
-      };
-
-      const handleDisconnect = () => {
-        console.log("Socket disconnected");
-        setSocketConnected(false);
-      };
-
-      const handleConnectError = (error) => {
-        console.error("Socket connection error:", error);
-        setError("Connection failed. Please refresh the page.");
-        setSocketConnected(false);
-      };
-
-      if (socket && typeof socket.on === "function") {
-        socket.on("connect", handleConnect);
-        socket.on("disconnect", handleDisconnect);
-        socket.on("connect_error", handleConnectError);
-
-        if (socket.connected) {
-          setSocketConnected(true);
-        }
-      }
-
-      return () => {
-        if (socket && typeof socket.off === "function") {
-          socket.off("connect", handleConnect);
-          socket.off("disconnect", handleDisconnect);
-          socket.off("connect_error", handleConnectError);
-        }
-      };
-    }
-  }, [socket]);
+  const socketConnected = socket?.isConnected || false;
 
   useEffect(() => {
     const loadChatData = async () => {
@@ -89,44 +49,54 @@ export const ChatWindow = () => {
         return;
       }
 
-      setIsLoading(true);
-      setError(null);
-
       try {
         dispatch(clearMessages());
 
-        const [chatResult, messagesResult] = await Promise.all([
+        await Promise.all([
           dispatch(fetchChatById(chatId)).unwrap(),
           dispatch(fetchMessages({ chatId })).unwrap(),
         ]);
-
-        if (socket && socketConnected && typeof socket.emit === "function") {
-          socket.emit("joinChat", chatId);
-          console.log(`Joined chat room: ${chatId}`);
-        }
 
         dispatch(markMessagesAsRead(chatId));
       } catch (error) {
         console.error("Failed to load chat:", error);
         setError(error.message || "Failed to load chat");
         toast.error("Failed to load chat");
-      } finally {
-        setIsLoading(false);
       }
     };
 
     loadChatData();
-
-    return () => {
-      if (socket && chatId && typeof socket.emit === "function") {
-        socket.emit("leaveChat", chatId);
-        console.log(`Left chat room: ${chatId}`);
-      }
-    };
-  }, [chatId, dispatch, socket, socketConnected]);
+  }, [chatId, dispatch]);
 
   useEffect(() => {
-    if (!socket || !chatId || typeof socket.on !== "function") return;
+    if (!socket || !chatId) return;
+
+    const joinChat = () => {
+      if (socket.isConnected && typeof socket.emit === "function") {
+        socket.emit("joinChat", chatId);
+        console.log(`Joined chat room: ${chatId}`);
+      }
+    };
+
+    if (socket.isConnected) {
+      joinChat();
+    } else {
+      socket.on("connect", joinChat);
+    }
+
+    return () => {
+      if (socket && typeof socket.off === "function") {
+        socket.off("connect", joinChat);
+        if (socket.isConnected && typeof socket.emit === "function") {
+          socket.emit("leaveChat", chatId);
+          console.log(`Left chat room: ${chatId}`);
+        }
+      }
+    };
+  }, [socket, chatId]);
+
+  useEffect(() => {
+    if (!socket || !chatId) return;
 
     const handleNewMessage = (message) => {
       console.log("New message received:", message);
@@ -172,14 +142,16 @@ export const ChatWindow = () => {
       toast.error("Connection error occurred");
     };
 
-    socket.on("newMessage", handleNewMessage);
-    socket.on("userTyping", handleUserTyping);
-    socket.on("userStoppedTyping", handleUserStoppedTyping);
-    socket.on("messageRead", handleMessageRead);
-    socket.on("error", handleError);
+    if (typeof socket.on === "function") {
+      socket.on("newMessage", handleNewMessage);
+      socket.on("userTyping", handleUserTyping);
+      socket.on("userStoppedTyping", handleUserStoppedTyping);
+      socket.on("messageRead", handleMessageRead);
+      socket.on("error", handleError);
+    }
 
     return () => {
-      if (typeof socket.off === "function") {
+      if (socket && typeof socket.off === "function") {
         socket.off("newMessage", handleNewMessage);
         socket.off("userTyping", handleUserTyping);
         socket.off("userStoppedTyping", handleUserStoppedTyping);
@@ -249,7 +221,7 @@ export const ChatWindow = () => {
     }
   }, [socket, socketConnected, chatId]);
 
-  if (isLoading || messagesLoading) {
+  if (messagesLoading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-white">
         <div className="text-center">
@@ -292,55 +264,59 @@ export const ChatWindow = () => {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white">
-      {/* Chat Header */}
+    <div className="flex flex-col h-full bg-white">
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white shadow-sm"
+        className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white shadow-sm flex-shrink-0"
       >
-        <div className="flex items-center space-x-3">
-          {/* Back button for mobile */}
+        <div className="flex items-center space-x-3 min-w-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate("/chat")}
-            className="md:hidden rounded-full p-2"
+            className="md:hidden rounded-full p-2 flex-shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          <Avatar
-            src={currentChat.avatar}
-            alt={currentChat.name}
-            size="md"
-            isOnline={currentChat.isOnline}
-            fallbackText={currentChat.name}
-          />
+          <div className="flex items-center space-x-3 min-w-0">
+            <Avatar
+              src={currentChat.avatar}
+              alt={currentChat.name}
+              size="md"
+              isOnline={currentChat.isOnline}
+              fallbackText={currentChat.name}
+              className="flex-shrink-0"
+            />
 
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">
-              {currentChat.name}
-            </h2>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm text-gray-500">
-                {currentChat.isOnline
-                  ? "Online"
-                  : currentChat.lastSeen && `Last seen ${currentChat.lastSeen}`}
-              </p>
-              {!socketConnected && (
-                <span className="text-xs text-red-500">• Disconnected</span>
-              )}
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-gray-900 truncate">
+                {currentChat.name}
+              </h2>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm text-gray-500 truncate">
+                  {currentChat.isOnline
+                    ? "Online"
+                    : currentChat.lastSeen &&
+                      `Last seen ${currentChat.lastSeen}`}
+                </p>
+                {!socketConnected && (
+                  <span className="text-xs text-red-500 flex-shrink-0">
+                    • Disconnected
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 flex-shrink-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => toast.info("Voice call feature coming soon!")}
-            className="rounded-full p-2"
+            className="rounded-full p-2 hidden sm:block"
           >
             <Phone className="h-5 w-5" />
           </Button>
@@ -348,7 +324,7 @@ export const ChatWindow = () => {
             variant="ghost"
             size="sm"
             onClick={() => toast.info("Video call feature coming soon!")}
-            className="rounded-full p-2"
+            className="rounded-full p-2 hidden sm:block"
           >
             <Video className="h-5 w-5" />
           </Button>
@@ -358,47 +334,48 @@ export const ChatWindow = () => {
         </div>
       </motion.div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-hidden relative">
-        <MessageList
-          messages={messages}
-          isLoading={false}
-          currentUserId={user?.id}
-        />
+      <div className="flex-1 overflow-hidden relative min-h-0">
+        <div className="h-full flex flex-col">
+          <div className="flex-1 overflow-y-auto">
+            <MessageList
+              messages={messages}
+              isLoading={false}
+              currentUserId={user?.id}
+            />
+            <div ref={messagesEndRef} />
+          </div>
 
-        {/* Typing Indicator */}
-        <AnimatePresence>
-          {typingUsers.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="absolute bottom-4 left-6"
-            >
-              <TypingIndicator users={typingUsers} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div ref={messagesEndRef} />
+          <AnimatePresence>
+            {typingUsers.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="px-6 py-2"
+              >
+                <TypingIndicator users={typingUsers} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* Message Input */}
-      <MessageInput
-        onSendMessage={handleSendMessage}
-        onTyping={handleTyping}
-        onStopTyping={handleStopTyping}
-        disabled={!socketConnected}
-      />
+      <div className="flex-shrink-0">
+        <MessageInput
+          onSendMessage={handleSendMessage}
+          onTyping={handleTyping}
+          onStopTyping={handleStopTyping}
+          disabled={!socketConnected}
+        />
 
-      {/* Connection Status Banner */}
-      {!socketConnected && (
-        <div className="bg-red-100 border-t border-red-200 px-4 py-2">
-          <p className="text-sm text-red-600 text-center">
-            Connection lost. Trying to reconnect...
-          </p>
-        </div>
-      )}
+        {!socketConnected && (
+          <div className="bg-red-100 border-t border-red-200 px-4 py-2">
+            <p className="text-sm text-red-600 text-center">
+              Connection lost. Trying to reconnect...
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

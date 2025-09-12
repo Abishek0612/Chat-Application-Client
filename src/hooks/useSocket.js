@@ -16,45 +16,26 @@ export const useSocket = () => {
         socketRef.current = socketService.connect(token);
 
         if (socketRef.current) {
-          socketRef.current.on("connect", () => {
+          const handleConnect = () => {
             console.log("Socket connected successfully");
             setIsConnected(true);
             setError(null);
-          });
+          };
 
-          socketRef.current.on("disconnect", (reason) => {
+          const handleDisconnect = (reason) => {
             console.log("Socket disconnected:", reason);
             setIsConnected(false);
+          };
 
-            if (
-              reason === "io server disconnect" ||
-              reason === "transport error"
-            ) {
-              setError("Connection lost");
-            }
-          });
-
-          socketRef.current.on("connect_error", (error) => {
+          const handleConnectError = (error) => {
             console.error("Socket connection error:", error);
             setIsConnected(false);
             setError("Failed to connect");
-          });
+          };
 
-          socketRef.current.on("reconnect", (attemptNumber) => {
-            console.log("Socket reconnected after", attemptNumber, "attempts");
-            setIsConnected(true);
-            setError(null);
-          });
-
-          socketRef.current.on("reconnect_error", (error) => {
-            console.error("Socket reconnection error:", error);
-            setError("Reconnection failed");
-          });
-
-          socketRef.current.on("reconnect_failed", () => {
-            console.error("Socket reconnection failed completely");
-            setError("Could not reconnect");
-          });
+          socketRef.current.on("connect", handleConnect);
+          socketRef.current.on("disconnect", handleDisconnect);
+          socketRef.current.on("connect_error", handleConnectError);
 
           setIsConnected(socketRef.current.connected);
         }
@@ -83,42 +64,41 @@ export const useSocket = () => {
     };
   }, [isAuthenticated, token]);
 
-  return socketRef.current
-    ? {
-        ...socketRef.current,
-        isConnected,
-        error,
-        emit: (...args) => {
-          if (
-            socketRef.current &&
-            isConnected &&
-            typeof socketRef.current.emit === "function"
-          ) {
-            return socketRef.current.emit(...args);
-          } else {
-            console.warn("Cannot emit - socket not connected");
-            return false;
-          }
-        },
-        on: (...args) => {
-          if (socketRef.current && typeof socketRef.current.on === "function") {
-            return socketRef.current.on(...args);
-          } else {
-            console.warn("Cannot set up listener - socket not available");
-            return false;
-          }
-        },
-        off: (...args) => {
-          if (
-            socketRef.current &&
-            typeof socketRef.current.off === "function"
-          ) {
-            return socketRef.current.off(...args);
-          } else {
-            console.warn("Cannot remove listener - socket not available");
-            return false;
-          }
-        },
+  if (!socketRef.current) {
+    return null;
+  }
+
+  return {
+    ...socketRef.current,
+    isConnected,
+    error,
+    emit: (...args) => {
+      if (
+        socketRef.current &&
+        isConnected &&
+        typeof socketRef.current.emit === "function"
+      ) {
+        return socketRef.current.emit(...args);
+      } else {
+        console.warn("Cannot emit - socket not connected");
+        return false;
       }
-    : null;
+    },
+    on: (...args) => {
+      if (socketRef.current && typeof socketRef.current.on === "function") {
+        return socketRef.current.on(...args);
+      } else {
+        console.warn("Cannot set up listener - socket not available");
+        return false;
+      }
+    },
+    off: (...args) => {
+      if (socketRef.current && typeof socketRef.current.off === "function") {
+        return socketRef.current.off(...args);
+      } else {
+        console.warn("Cannot remove listener - socket not available");
+        return false;
+      }
+    },
+  };
 };
