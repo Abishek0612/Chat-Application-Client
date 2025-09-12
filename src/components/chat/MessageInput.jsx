@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Send, Paperclip, Smile, Mic, Image } from "lucide-react";
 import { Button } from "../ui/Button";
 import EmojiPicker from "emoji-picker-react";
-import { uploadService } from "../../services/upload";
+import api from "../../services/api";
 import toast from "react-hot-toast";
 
 export const MessageInput = ({
@@ -16,6 +16,7 @@ export const MessageInput = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -83,81 +84,120 @@ export const MessageInput = ({
     textareaRef.current?.focus();
   };
 
-  const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const uploadFile = async (file, type) => {
     if (!file) return;
 
     setIsUploading(true);
+    setUploadProgress(0);
+
     try {
-      uploadService.validateFile(file, {
-        maxSize: 10 * 1024 * 1024,
-        allowedTypes: [
-          "application/pdf",
-          "text/plain",
-          "application/msword",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ],
+      const formData = new FormData();
+      formData.append("file", file);
+
+      console.log("Uploading file:", file.name, file.type, file.size);
+
+      const response = await api.post("/messages/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadProgress(percentCompleted);
+          console.log("Upload progress:", percentCompleted + "%");
+        },
       });
 
-      const result = await uploadService.uploadChatFile(file, (progress) => {
-        console.log(`Upload progress: ${progress}%`);
-      });
+      console.log("Upload response:", response.data);
 
-      if (result.success && result.data?.fileUrl) {
-        onSendMessage(file.name, "FILE", {
-          fileUrl: result.data.fileUrl,
-          fileName: file.name,
-          fileSize: file.size,
+      if (response.data.success && response.data.data?.fileUrl) {
+        const caption = type === "IMAGE" ? "" : file.name;
+
+        onSendMessage(caption, type, {
+          fileUrl: response.data.data.fileUrl,
+          fileName: response.data.data.fileName || file.name,
+          fileSize: response.data.data.fileSize || file.size,
         });
 
         toast.success("File uploaded successfully!");
       } else {
         throw new Error("Invalid response from server");
       }
-
-      e.target.value = "";
     } catch (error) {
       console.error("File upload error:", error);
-      toast.error(error.message || "Failed to upload file");
+
+      let errorMessage = "Failed to upload file";
+
+      if (error.response?.status === 401) {
+        errorMessage =
+          "File upload service not configured. Please contact administrator.";
+      } else if (error.response?.status === 413) {
+        errorMessage = "File too large. Please choose a smaller file.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const maxSize = 10 * 1024 * 1024;
+    const allowedTypes = [
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/zip",
+      "application/x-rar-compressed",
+    ];
+
+    if (file.size > maxSize) {
+      toast.error("File size must be less than 10MB");
+      e.target.value = "";
+      return;
+    }
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("File type not supported");
+      e.target.value = "";
+      return;
+    }
+
+    await uploadFile(file, "FILE");
+    e.target.value = "";
   };
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
-    try {
-      uploadService.validateFile(file, {
-        maxSize: 5 * 1024 * 1024,
-        allowedTypes: ["image/jpeg", "image/png", "image/gif", "image/webp"],
-      });
+    const maxSize = 5 * 1024 * 1024;
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
-      const result = await uploadService.uploadImage(file, (progress) => {
-        console.log(`Upload progress: ${progress}%`);
-      });
-
-      if (result.success && result.data?.fileUrl) {
-        onSendMessage("", "IMAGE", {
-          fileUrl: result.data.fileUrl,
-          fileName: file.name,
-          fileSize: file.size,
-        });
-
-        toast.success("Image uploaded successfully!");
-      } else {
-        throw new Error("Invalid response from server");
-      }
-
+    if (file.size > maxSize) {
+      toast.error("Image size must be less than 5MB");
       e.target.value = "";
-    } catch (error) {
-      console.error("Image upload error:", error);
-      toast.error(error.message || "Failed to upload image");
-    } finally {
-      setIsUploading(false);
+      return;
     }
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Image type not supported");
+      e.target.value = "";
+      return;
+    }
+
+    await uploadFile(file, "IMAGE");
+    e.target.value = "";
   };
 
   const startRecording = () => setIsRecording(true);
@@ -273,8 +313,15 @@ export const MessageInput = ({
 
         {isUploading && (
           <div className="mt-2 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
-            <span className="ml-2 text-sm text-gray-500">Uploading...</span>
+            <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
+              <div
+                className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <span className="text-sm text-gray-500 flex-shrink-0">
+              {uploadProgress}%
+            </span>
           </div>
         )}
       </form>

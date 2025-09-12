@@ -24,10 +24,27 @@ class UploadService {
         },
       });
 
-      return response.data;
+      return {
+        success: true,
+        data: response.data.data || response.data,
+      };
     } catch (error) {
       console.error("Upload error:", error);
-      throw error;
+
+      let errorMessage = "Failed to upload file";
+
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.status === 401) {
+        errorMessage =
+          "File upload service not configured properly. Please contact administrator.";
+      } else if (error.response?.status === 413) {
+        errorMessage = "File too large. Please choose a smaller file.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      throw new Error(errorMessage);
     }
   }
 
@@ -50,10 +67,15 @@ class UploadService {
         },
       });
 
-      return response.data;
+      return {
+        success: true,
+        fileUrl: response.data.data?.user?.avatar || response.data.user?.avatar,
+      };
     } catch (error) {
       console.error("Avatar upload error:", error);
-      throw error;
+      throw new Error(
+        error.response?.data?.message || "Failed to upload avatar"
+      );
     }
   }
 
@@ -110,7 +132,7 @@ class UploadService {
     if (bytes === 0) return "0 Bytes";
 
     const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];

@@ -21,6 +21,7 @@ import {
   setCurrentChat,
   clearCurrentChat,
   updateChatLastMessage,
+  fetchChats,
 } from "../../store/slices/chatSlice";
 import { Phone, Video, MoreVertical, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
@@ -55,12 +56,19 @@ export const ChatWindow = () => {
       try {
         dispatch(clearMessages());
 
-        await Promise.all([
+        const [chatResult, messagesResult] = await Promise.allSettled([
           dispatch(fetchChatById(chatId)).unwrap(),
           dispatch(fetchMessages({ chatId })).unwrap(),
         ]);
 
-        dispatch(markMessagesAsRead(chatId));
+        if (chatResult.status === "fulfilled") {
+          dispatch(markMessagesAsRead(chatId));
+          dispatch(fetchChats());
+        }
+
+        if (messagesResult.status === "rejected") {
+          console.error("Failed to load messages:", messagesResult.reason);
+        }
       } catch (error) {
         console.error("Failed to load chat:", error);
         setError(error.message || "Failed to load chat");
@@ -105,6 +113,7 @@ export const ChatWindow = () => {
       if (message.chatId === chatId) {
         dispatch(addMessage(message));
         dispatch(updateChatLastMessage({ chatId, message }));
+        dispatch(fetchChats());
 
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

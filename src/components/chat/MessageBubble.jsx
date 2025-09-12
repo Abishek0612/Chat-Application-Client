@@ -87,7 +87,7 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
     <div
       className={clsx(
         "flex space-x-2 mb-4",
-        isOwn ? "justify-end" : "justify-start"
+        isOwn ? "justify-end flex-row-reverse" : "justify-start"
       )}
     >
       {!isOwn && showAvatar && (
@@ -104,7 +104,7 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
       <div
         className={clsx(
           "relative max-w-xs lg:max-w-md group",
-          isOwn ? "ml-auto" : "mr-auto"
+          isOwn ? "mr-2" : "ml-2"
         )}
       >
         <motion.div
@@ -113,7 +113,7 @@ export const MessageBubble = ({ message, isOwn, showAvatar }) => {
           className={clsx(
             "px-4 py-2 rounded-2xl shadow-sm relative",
             isOwn
-              ? "bg-blue-600 text-white ml-auto"
+              ? "bg-blue-600 text-white"
               : "bg-gray-100 text-gray-900 border border-gray-200"
           )}
           style={{

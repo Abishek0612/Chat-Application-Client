@@ -44,24 +44,31 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
               </span>
             </div>
 
-            {dayMessages.map((message, index) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-              >
-                <MessageBubble
-                  message={message}
-                  isOwn={message.senderId === currentUserId}
-                  showAvatar={
-                    index === 0 ||
-                    dayMessages[index - 1]?.senderId !== message.senderId
-                  }
-                />
-              </motion.div>
-            ))}
+            {dayMessages.map((message, index) => {
+              const isOwn = message.senderId === currentUserId;
+              const showAvatar =
+                index === 0 ||
+                dayMessages[index - 1]?.senderId !== message.senderId ||
+                new Date(message.createdAt) -
+                  new Date(dayMessages[index - 1]?.createdAt) >
+                  5 * 60 * 1000;
+
+              return (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                >
+                  <MessageBubble
+                    message={message}
+                    isOwn={isOwn}
+                    showAvatar={showAvatar}
+                  />
+                </motion.div>
+              );
+            })}
           </div>
         ))}
       </AnimatePresence>

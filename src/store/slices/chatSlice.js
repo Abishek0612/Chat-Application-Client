@@ -38,7 +38,7 @@ export const fetchChatById = createAsyncThunk(
 
 export const createChat = createAsyncThunk(
   "chat/createChat",
-  async (chatData, { rejectWithValue }) => {
+  async (chatData, { rejectWithValue, dispatch }) => {
     try {
       console.log("Creating chat with data:", chatData);
 
@@ -57,6 +57,8 @@ export const createChat = createAsyncThunk(
         console.error("Invalid response structure:", response.data);
         throw new Error("Invalid response from server");
       }
+
+      dispatch(fetchChats());
 
       return response.data;
     } catch (error) {
@@ -244,18 +246,20 @@ const chatSlice = createSlice({
     },
 
     resetChatState: (state) => {
-      return initialState;
+      return { ...initialState, chats: state.chats };
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchChats.pending, (state) => {
-        state.isLoading = true;
+        if (state.chats.length === 0) {
+          state.isLoading = true;
+        }
         state.error = null;
       })
       .addCase(fetchChats.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.chats = action.payload.chats || [];
+        state.chats = action.payload.data?.chats || action.payload.chats || [];
         state.pagination = action.payload.pagination || state.pagination;
         state.error = null;
       })
@@ -339,7 +343,8 @@ const chatSlice = createSlice({
         console.error("Create chat failed:", action.payload);
       })
       .addCase(fetchContacts.fulfilled, (state, action) => {
-        state.contacts = action.payload.contacts || [];
+        state.contacts =
+          action.payload.data?.contacts || action.payload.contacts || [];
       })
       .addCase(fetchContacts.rejected, (state, action) => {
         console.error("Fetch contacts failed:", action.payload);

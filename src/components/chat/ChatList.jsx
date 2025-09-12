@@ -27,6 +27,14 @@ export const ChatList = () => {
     dispatch(fetchChats());
   }, [dispatch]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      dispatch(fetchChats());
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [dispatch]);
+
   const filteredChats = React.useMemo(() => {
     if (!debouncedSearchQuery.trim()) {
       return chats || [];
@@ -58,7 +66,7 @@ export const ChatList = () => {
     setSearchQuery(e.target.value);
   }, []);
 
-  if (isLoading) {
+  if (isLoading && (!chats || chats.length === 0)) {
     return (
       <div className="h-full flex flex-col">
         <div className="p-4 border-b border-gray-200 bg-white">
