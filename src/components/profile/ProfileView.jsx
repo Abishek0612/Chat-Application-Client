@@ -1,13 +1,25 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { Edit, Mail, Calendar, MapPin, Phone } from "lucide-react";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
 import { formatDate } from "../../utils/formatters";
+import { fetchChats, fetchContacts } from "../../store/slices/chatSlice";
 
 export const ProfileView = ({ onEdit }) => {
+  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const { chats, contacts } = useSelector((state) => state.chat);
+
+  useEffect(() => {
+    dispatch(fetchChats());
+    dispatch(fetchContacts());
+  }, [dispatch]);
+
+  const totalChats = chats?.length || 0;
+  const totalContacts = contacts?.length || 0;
+  const totalGroups = chats?.filter((chat) => chat.isGroup).length || 0;
 
   if (!user) return null;
 
@@ -118,15 +130,15 @@ export const ProfileView = ({ onEdit }) => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Activity</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-blue-50 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600">12</p>
+            <p className="text-2xl font-bold text-blue-600">{totalChats}</p>
             <p className="text-sm text-blue-600">Total Chats</p>
           </div>
           <div className="bg-green-50 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">248</p>
-            <p className="text-sm text-green-600">Messages Sent</p>
+            <p className="text-2xl font-bold text-green-600">{totalContacts}</p>
+            <p className="text-sm text-green-600">Total Contacts</p>
           </div>
           <div className="bg-purple-50 rounded-lg p-4 text-center">
-            <p className="text-2xl font-bold text-purple-600">5</p>
+            <p className="text-2xl font-bold text-purple-600">{totalGroups}</p>
             <p className="text-sm text-purple-600">Groups</p>
           </div>
         </div>

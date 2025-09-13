@@ -11,6 +11,8 @@ export const MessageBubble = ({
   isOwn,
   showAvatar,
   currentUserId,
+  highlighted,
+  searchQuery,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
 
@@ -129,6 +131,27 @@ export const MessageBubble = ({
         );
 
       default:
+        if (searchQuery && message.content && message.type === "TEXT") {
+          const parts = message.content.split(
+            new RegExp(`(${searchQuery})`, "gi")
+          );
+          return (
+            <p className="text-sm break-words whitespace-pre-wrap">
+              {parts.map((part, i) =>
+                part.toLowerCase() === searchQuery.toLowerCase() ? (
+                  <mark
+                    key={i}
+                    className="bg-yellow-300 text-black rounded px-0.5"
+                  >
+                    {part}
+                  </mark>
+                ) : (
+                  part
+                )
+              )}
+            </p>
+          );
+        }
         return (
           <p className="text-sm break-words whitespace-pre-wrap">
             {message.content}
@@ -166,10 +189,11 @@ export const MessageBubble = ({
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.2 }}
           className={clsx(
-            "px-4 py-2 rounded-2xl shadow-sm relative",
+            "px-4 py-2 rounded-2xl shadow-sm relative transition-colors duration-300",
             messageIsOwn
               ? "bg-blue-600 text-white ml-auto"
-              : "bg-gray-100 text-gray-900 border border-gray-200"
+              : "bg-gray-100 text-gray-900 border border-gray-200",
+            highlighted && (messageIsOwn ? "bg-blue-800" : "bg-yellow-200")
           )}
           style={{
             borderBottomRightRadius: messageIsOwn ? "4px" : "16px",

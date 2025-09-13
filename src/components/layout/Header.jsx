@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Menu,
-  Search,
   Settings,
   User,
   LogOut,
@@ -14,11 +13,9 @@ import {
 } from "lucide-react";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
-import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
 import { NotificationCenter } from "../notifications/NotificationCenter";
 import { logoutUser } from "../../store/slices/authSlice";
-import { toggleSidebar } from "../../store/slices/uiSlice";
 import toast from "react-hot-toast";
 
 export const Header = ({ onToggleSidebar, isSidebarOpen }) => {
@@ -52,7 +49,6 @@ export const Header = ({ onToggleSidebar, isSidebarOpen }) => {
 
   const handleToggleSidebar = () => {
     onToggleSidebar?.();
-    dispatch(toggleSidebar());
   };
 
   return (
@@ -81,15 +77,6 @@ export const Header = ({ onToggleSidebar, isSidebarOpen }) => {
           </div>
 
           <div className="flex items-center space-x-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSearchModal(true)}
-              className="hidden sm:flex p-2"
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-
             <div className="hidden md:flex items-center space-x-1">
               <Button
                 variant={
@@ -187,30 +174,6 @@ export const Header = ({ onToggleSidebar, isSidebarOpen }) => {
           </div>
         </div>
       </header>
-
-      <Modal
-        isOpen={showSearchModal}
-        onClose={() => setShowSearchModal(false)}
-        title="Search"
-        size="md"
-      >
-        <div className="space-y-4">
-          <Input
-            type="text"
-            placeholder="Search messages, contacts..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            leftIcon={<Search />}
-            autoFocus
-          />
-
-          <div className="text-sm text-gray-500">
-            {searchQuery
-              ? `Searching for "${searchQuery}"...`
-              : "Start typing to search"}
-          </div>
-        </div>
-      </Modal>
     </>
   );
 };

@@ -7,7 +7,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="h-full overflow-y-auto max-w-4xl mx-auto p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

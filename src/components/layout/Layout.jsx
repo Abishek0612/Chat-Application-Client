@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
-import { setSidebarOpen } from "../../store/slices/uiSlice";
+import { setSidebarOpen, toggleSidebar } from "../../store/slices/uiSlice";
 
 export const Layout = () => {
   const dispatch = useDispatch();
@@ -15,8 +15,9 @@ export const Layout = () => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-
-      if (mobile && sidebarOpen) {
+      if (!mobile && sidebarOpen) {
+        dispatch(setSidebarOpen(true));
+      } else if (mobile) {
         dispatch(setSidebarOpen(false));
       }
     };
@@ -24,10 +25,10 @@ export const Layout = () => {
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
-  }, [dispatch, sidebarOpen]);
+  }, [dispatch]);
 
   const handleToggleSidebar = () => {
-    dispatch(setSidebarOpen(!sidebarOpen));
+    dispatch(toggleSidebar());
   };
 
   const handleCloseSidebar = () => {
@@ -38,14 +39,12 @@ export const Layout = () => {
 
   return (
     <div className="h-screen flex overflow-hidden bg-gray-50">
-      {/* Desktop Sidebar */}
       <div className="hidden md:flex md:flex-shrink-0">
         <div className="flex flex-col w-80">
           <Sidebar />
         </div>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {sidebarOpen && isMobile && (
           <>
@@ -69,7 +68,6 @@ export const Layout = () => {
         )}
       </AnimatePresence>
 
-      {/* Main Content */}
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <Header
           onToggleSidebar={handleToggleSidebar}

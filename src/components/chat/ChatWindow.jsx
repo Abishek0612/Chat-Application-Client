@@ -7,8 +7,10 @@ import { MessageInput } from "./MessageInput";
 import { TypingIndicator } from "./TypingIndicator";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
 import { useSocket } from "../../hooks/useSocket";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   fetchMessages,
   markMessagesAsRead,
@@ -24,7 +26,16 @@ import {
   updateChatLastMessage,
   fetchChats,
 } from "../../store/slices/chatSlice";
-import { Phone, Video, MoreVertical, ArrowLeft } from "lucide-react";
+import {
+  Phone,
+  Video,
+  MoreVertical,
+  ArrowLeft,
+  Search,
+  X,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { formatTime } from "../../utils/formatters";
 
@@ -33,10 +44,16 @@ export const ChatWindow = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const messagesEndRef = useRef(null);
+  const messageRefs = useRef(new Map());
 
   const [typingUsers, setTypingUsers] = useState([]);
   const [error, setError] = useState(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [currentResultIndex, setCurrentResultIndex] = useState(-1);
 
   const { currentChat } = useSelector((state) => state.chat);
   const { messages, isLoading: messagesLoading } = useSelector(
@@ -46,6 +63,32 @@ export const ChatWindow = () => {
 
   const socket = useSocket();
   const socketConnected = socket?.isConnected || false;
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  useEffect(() => {
+    if (debouncedSearchQuery && isSearchVisible) {
+      const results = messages.filter((msg) =>
+        msg.content?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+      );
+      setSearchResults(
+        results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      );
+      setCurrentResultIndex(results.length > 0 ? 0 : -1);
+    } else {
+      setSearchResults([]);
+      setCurrentResultIndex(-1);
+    }
+  }, [debouncedSearchQuery, messages, isSearchVisible]);
+
+  useEffect(() => {
+    if (currentResultIndex !== -1 && searchResults[currentResultIndex]) {
+      const messageId = searchResults[currentResultIndex].id;
+      const element = messageRefs.current.get(messageId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [currentResultIndex, searchResults]);
 
   useEffect(() => {
     const loadChatData = async () => {
@@ -261,6 +304,22 @@ export const ChatWindow = () => {
     }
   }, [socket, socketConnected, chatId]);
 
+  const handleSearchNav = (direction) => {
+    if (searchResults.length === 0) return;
+    let nextIndex = currentResultIndex + direction;
+    if (nextIndex >= searchResults.length) {
+      nextIndex = 0;
+    } else if (nextIndex < 0) {
+      nextIndex = searchResults.length - 1;
+    }
+    setCurrentResultIndex(nextIndex);
+  };
+
+  const closeSearch = () => {
+    setIsSearchVisible(false);
+    setSearchQuery("");
+  };
+
   if (isInitialLoad || messagesLoading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-white">
@@ -367,6 +426,14 @@ export const ChatWindow = () => {
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => setIsSearchVisible(true)}
+            className="rounded-full p-2"
+          >
+            <Search className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() =>
               toast("Voice call feature coming soon!", {
                 duration: 3000,
@@ -394,6 +461,57 @@ export const ChatWindow = () => {
         </div>
       </motion.div>
 
+      <AnimatePresence>
+        {isSearchVisible && (
+          <motion.div
+            initial={{ y: -40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -40, opacity: 0 }}
+            className="px-4 py-2 border-b border-gray-200 bg-gray-50 flex items-center space-x-2"
+          >
+            <Input
+              type="text"
+              placeholder="Search in chat..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1"
+              autoFocus
+            />
+            {searchResults.length > 0 && (
+              <span className="text-sm text-gray-500">{`${
+                currentResultIndex + 1
+              } of ${searchResults.length}`}</span>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2"
+              onClick={() => handleSearchNav(1)}
+              disabled={searchResults.length === 0}
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2"
+              onClick={() => handleSearchNav(-1)}
+              disabled={searchResults.length === 0}
+            >
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2"
+              onClick={closeSearch}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex-1 overflow-hidden relative min-h-0">
         <div className="h-full flex flex-col">
           <div className="flex-1 overflow-y-auto">
@@ -401,6 +519,9 @@ export const ChatWindow = () => {
               messages={messages}
               isLoading={false}
               currentUserId={user?.id}
+              highlightedMessageId={searchResults[currentResultIndex]?.id}
+              searchQuery={debouncedSearchQuery}
+              messageRefs={messageRefs}
             />
             <div ref={messagesEndRef} />
           </div>

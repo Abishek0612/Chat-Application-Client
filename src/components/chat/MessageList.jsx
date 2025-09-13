@@ -4,15 +4,22 @@ import { MessageBubble } from "./MessageBubble";
 import { MessageSkeleton } from "../ui/Skeleton";
 import { formatDate } from "../../utils/formatters";
 
-export const MessageList = ({ messages, isLoading, currentUserId }) => {
+export const MessageList = ({
+  messages,
+  isLoading,
+  currentUserId,
+  highlightedMessageId,
+  searchQuery,
+  messageRefs,
+}) => {
   const listRef = useRef(null);
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    if (bottomRef.current) {
+    if (bottomRef.current && !highlightedMessageId) {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [messages, highlightedMessageId]);
 
   const groupMessagesByDate = (messages) => {
     const groups = {};
@@ -81,6 +88,11 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
               return (
                 <motion.div
                   key={message.id}
+                  ref={(el) => {
+                    if (messageRefs?.current) {
+                      messageRefs.current.set(message.id, el);
+                    }
+                  }}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
@@ -95,6 +107,8 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
                     isOwn={isOwn}
                     showAvatar={showAvatar}
                     currentUserId={currentUserId}
+                    highlighted={message.id === highlightedMessageId}
+                    searchQuery={searchQuery}
                   />
                 </motion.div>
               );

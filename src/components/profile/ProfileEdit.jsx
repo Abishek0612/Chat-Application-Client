@@ -79,7 +79,6 @@ export const ProfileEdit = ({ onCancel }) => {
       animate={{ opacity: 1 }}
       className="p-8"
     >
-      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Edit Profile</h1>
         <Button variant="ghost" onClick={onCancel} className="rounded-full p-2">
@@ -88,7 +87,6 @@ export const ProfileEdit = ({ onCancel }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Avatar Upload */}
         <div className="flex justify-center mb-8">
           <AvatarUpload
             currentAvatar={user?.avatar}
@@ -96,7 +94,6 @@ export const ProfileEdit = ({ onCancel }) => {
           />
         </div>
 
-        {/* Name Fields */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -129,7 +126,6 @@ export const ProfileEdit = ({ onCancel }) => {
           </div>
         </div>
 
-        {/* Bio */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Bio
@@ -151,7 +147,6 @@ export const ProfileEdit = ({ onCancel }) => {
           </div>
         </div>
 
-        {/* Phone */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Phone Number
@@ -169,7 +164,6 @@ export const ProfileEdit = ({ onCancel }) => {
           )}
         </div>
 
-        {/* Email (Read-only) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Email Address
@@ -185,7 +179,6 @@ export const ProfileEdit = ({ onCancel }) => {
           </p>
         </div>
 
-        {/* Username (Read-only) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Username
@@ -201,7 +194,6 @@ export const ProfileEdit = ({ onCancel }) => {
           </p>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Cancel
