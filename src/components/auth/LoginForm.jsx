@@ -73,7 +73,8 @@ export const LoginForm = () => {
         toast.error(res.data.message || "Google login failed");
       }
     } catch (error) {
-      toast.error("An error occurred during Google login");
+      console.error("Google login error:", error);
+      toast.error("Google login failed. Please try again.");
     }
   };
 

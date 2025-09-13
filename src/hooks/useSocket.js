@@ -7,6 +7,7 @@ export const useSocket = () => {
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState(null);
+  const reconnectTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (isAuthenticated && token) {
@@ -25,6 +26,18 @@ export const useSocket = () => {
           const handleDisconnect = (reason) => {
             console.log("Socket disconnected:", reason);
             setIsConnected(false);
+
+            if (reason === "io server disconnect") {
+              if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+              }
+              reconnectTimeoutRef.current = setTimeout(() => {
+                if (socketRef.current && !socketRef.current.connected) {
+                  console.log("Attempting manual reconnection...");
+                  socketRef.current.connect();
+                }
+              }, 2000);
+            }
           };
 
           const handleConnectError = (error) => {
@@ -56,6 +69,9 @@ export const useSocket = () => {
     } else {
       if (socketRef.current) {
         console.log("Disconnecting socket - not authenticated");
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
         socketService.disconnect();
         socketRef.current = null;
         setIsConnected(false);
@@ -64,51 +80,93 @@ export const useSocket = () => {
     }
 
     return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
       if (socketRef.current) {
         console.log("Cleaning up socket connection");
-        socketService.disconnect();
+        const currentSocket = socketRef.current;
         socketRef.current = null;
         setIsConnected(false);
         setError(null);
+
+        try {
+          currentSocket.off("connect");
+          currentSocket.off("disconnect");
+          currentSocket.off("connect_error");
+          currentSocket.off("userOnline");
+          currentSocket.off("userOffline");
+        } catch (err) {
+          console.warn("Error cleaning up socket listeners:", err);
+        }
+
+        socketService.disconnect();
       }
     };
   }, [isAuthenticated, token]);
 
+  const safeEmit = (...args) => {
+    if (
+      socketRef.current &&
+      isConnected &&
+      typeof socketRef.current.emit === "function"
+    ) {
+      try {
+        return socketRef.current.emit(...args);
+      } catch (error) {
+        console.warn("Socket emit failed:", error);
+        return false;
+      }
+    } else {
+      console.warn("Cannot emit - socket not connected");
+      return false;
+    }
+  };
+
+  const safeOn = (...args) => {
+    if (socketRef.current && typeof socketRef.current.on === "function") {
+      try {
+        return socketRef.current.on(...args);
+      } catch (error) {
+        console.warn("Socket on failed:", error);
+        return false;
+      }
+    } else {
+      console.warn("Cannot set up listener - socket not available");
+      return false;
+    }
+  };
+
+  const safeOff = (...args) => {
+    if (socketRef.current && typeof socketRef.current.off === "function") {
+      try {
+        return socketRef.current.off(...args);
+      } catch (error) {
+        console.warn("Socket off failed:", error);
+        return false;
+      }
+    } else {
+      console.warn("Cannot remove listener - socket not available");
+      return false;
+    }
+  };
+
   if (!socketRef.current) {
-    return null;
+    return {
+      isConnected: false,
+      error,
+      emit: () => console.warn("Socket not available"),
+      on: () => console.warn("Socket not available"),
+      off: () => console.warn("Socket not available"),
+    };
   }
 
   return {
     ...socketRef.current,
     isConnected,
     error,
-    emit: (...args) => {
-      if (
-        socketRef.current &&
-        isConnected &&
-        typeof socketRef.current.emit === "function"
-      ) {
-        return socketRef.current.emit(...args);
-      } else {
-        console.warn("Cannot emit - socket not connected");
-        return false;
-      }
-    },
-    on: (...args) => {
-      if (socketRef.current && typeof socketRef.current.on === "function") {
-        return socketRef.current.on(...args);
-      } else {
-        console.warn("Cannot set up listener - socket not available");
-        return false;
-      }
-    },
-    off: (...args) => {
-      if (socketRef.current && typeof socketRef.current.off === "function") {
-        return socketRef.current.off(...args);
-      } else {
-        console.warn("Cannot remove listener - socket not available");
-        return false;
-      }
-    },
+    emit: safeEmit,
+    on: safeOn,
+    off: safeOff,
   };
 };
