@@ -101,8 +101,12 @@ const authSlice = createSlice({
         state.user = { ...state.user, ...action.payload };
       }
     },
-    setUser: (state, action) => {
-      state.user = action.payload;
+    setGoogleAuthSuccess: (state, action) => {
+      state.isAuthenticated = true;
+      state.user = action.payload.user;
+      state.token = action.payload.token;
+      state.error = null;
+      state.isLoading = false;
     },
   },
   extraReducers: (builder) => {
@@ -184,5 +188,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, updateUserProfile, setUser } = authSlice.actions;
+export const { clearError, updateUserProfile, setGoogleAuthSuccess } =
+  authSlice.actions;
 export default authSlice.reducer;

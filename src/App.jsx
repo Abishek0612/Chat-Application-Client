@@ -10,14 +10,12 @@ import { checkAuthStatus } from "./store/slices/authSlice";
 
 const Login = React.lazy(() => import("./pages/auth/Login"));
 const Register = React.lazy(() => import("./pages/auth/Register"));
-const AuthSuccess = React.lazy(() => import("./pages/auth/AuthSuccess"));
 const ChatPage = React.lazy(() => import("./pages/chat/ChatPage"));
 const ChatDashboard = React.lazy(() => import("./pages/chat/ChatDashboard"));
 const Contacts = React.lazy(() => import("./pages/chat/Contacts"));
 const Profile = React.lazy(() => import("./pages/profile/Profile"));
 const Settings = React.lazy(() => import("./pages/profile/Settings"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
-const GoogleAuth = React.lazy(() => import("./components/auth/GoogleAuth"));
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -79,15 +77,6 @@ function App() {
                   </PublicRoute>
                 }
               />
-              <Route
-                path="/auth/success"
-                element={
-                  <PublicRoute>
-                    <AuthSuccess />
-                  </PublicRoute>
-                }
-              />
-              <Route path="/auth/google" element={<GoogleAuth />} />
 
               <Route
                 path="/"
