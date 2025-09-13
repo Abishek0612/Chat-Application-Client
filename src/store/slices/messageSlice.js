@@ -6,7 +6,7 @@ export const fetchMessages = createAsyncThunk(
   async ({ chatId, page = 1, limit = 50 }, { rejectWithValue }) => {
     try {
       const response = await chatAPI.getMessages(chatId, { page, limit });
-      return response.data;
+      return { chatId, ...response.data };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to fetch messages"
@@ -76,6 +76,7 @@ const initialState = {
   messages: [],
   isLoading: false,
   error: null,
+  currentChatId: null,
   pagination: {
     page: 1,
     limit: 50,
@@ -92,6 +93,8 @@ const messageSlice = createSlice({
   reducers: {
     addMessage: (state, action) => {
       const message = action.payload;
+      if (!message || !message.id) return;
+
       const existingIndex = state.messages.findIndex(
         (m) => m.id === message.id
       );
@@ -119,7 +122,14 @@ const messageSlice = createSlice({
     },
     clearMessages: (state) => {
       state.messages = [];
+      state.currentChatId = null;
       state.pagination = initialState.pagination;
+    },
+    setCurrentChatId: (state, action) => {
+      if (state.currentChatId !== action.payload) {
+        state.messages = [];
+        state.currentChatId = action.payload;
+      }
     },
     setTypingUsers: (state, action) => {
       state.typingUsers = action.payload;
@@ -156,26 +166,34 @@ const messageSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMessages.pending, (state) => {
+      .addCase(fetchMessages.pending, (state, action) => {
         state.isLoading = true;
         state.error = null;
+        state.currentChatId = action.meta.arg.chatId;
       })
       .addCase(fetchMessages.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.messages = action.payload.messages || [];
-        state.pagination = action.payload.pagination || state.pagination;
+        const { messages, pagination } = action.payload.data || action.payload;
+        state.messages = Array.isArray(messages) ? messages : [];
+        state.pagination = pagination || state.pagination;
       })
       .addCase(fetchMessages.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+        state.messages = [];
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
-        const message = action.payload.message;
-        const existingIndex = state.messages.findIndex(
-          (m) => m.id === message.id
-        );
-        if (existingIndex === -1) {
-          state.messages.push(message);
+        const message = action.payload.data?.message || action.payload.message;
+        if (message && message.id) {
+          const existingIndex = state.messages.findIndex(
+            (m) => m.id === message.id
+          );
+          if (existingIndex === -1) {
+            state.messages.push(message);
+            state.messages.sort(
+              (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+            );
+          }
         }
       })
       .addCase(deleteMessage.fulfilled, (state, action) => {
@@ -197,6 +215,7 @@ export const {
   updateMessage,
   removeMessage,
   clearMessages,
+  setCurrentChatId,
   setTypingUsers,
   addTypingUser,
   removeTypingUser,

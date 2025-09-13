@@ -7,7 +7,7 @@ import { MessageCircle, Users } from "lucide-react";
 import { Button } from "../ui/Button";
 import { clsx } from "clsx";
 
-export const Sidebar = () => {
+export const Sidebar = ({ onItemClick }) => {
   const [activeTab, setActiveTab] = useState("chats");
   const location = useLocation();
 
@@ -18,6 +18,11 @@ export const Sidebar = () => {
       setActiveTab("contacts");
     }
   }, [location.pathname]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    onItemClick?.();
+  };
 
   const tabs = [
     { id: "chats", label: "Chats", icon: MessageCircle },
@@ -33,7 +38,7 @@ export const Sidebar = () => {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={clsx(
                 "flex-1 flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors relative",
                 activeTab === tab.id
@@ -64,8 +69,10 @@ export const Sidebar = () => {
           transition={{ duration: 0.2 }}
           className="h-full"
         >
-          {activeTab === "chats" && <ChatList />}
-          {activeTab === "contacts" && <ContactList />}
+          {activeTab === "chats" && <ChatList onItemClick={onItemClick} />}
+          {activeTab === "contacts" && (
+            <ContactList onItemClick={onItemClick} />
+          )}
         </motion.div>
       </div>
     </div>

@@ -97,7 +97,12 @@ const authSlice = createSlice({
       state.error = null;
     },
     updateUserProfile: (state, action) => {
-      state.user = { ...state.user, ...action.payload };
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
+    setUser: (state, action) => {
+      state.user = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -160,7 +165,9 @@ const authSlice = createSlice({
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = { ...state.user, ...action.payload.data.user };
+        if (state.user && action.payload.data?.user) {
+          state.user = { ...state.user, ...action.payload.data.user };
+        }
         state.error = null;
       })
       .addCase(updateProfile.rejected, (state, action) => {
@@ -177,5 +184,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, updateUserProfile } = authSlice.actions;
+export const { clearError, updateUserProfile, setUser } = authSlice.actions;
 export default authSlice.reducer;

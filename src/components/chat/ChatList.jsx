@@ -12,7 +12,7 @@ import { formatTime } from "../../utils/formatters";
 import { clsx } from "clsx";
 import { useDebounce } from "../../hooks/useDebounce";
 
-export const ChatList = () => {
+export const ChatList = ({ onItemClick }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -50,17 +50,19 @@ export const ChatList = () => {
       try {
         dispatch(setCurrentChat(chat));
         navigate(`/chat/${chat.id}`);
+        onItemClick?.();
         console.log("Selected chat:", chat.id);
       } catch (error) {
         console.error("Error selecting chat:", error);
       }
     },
-    [dispatch, navigate]
+    [dispatch, navigate, onItemClick]
   );
 
   const handleNewChat = useCallback(() => {
     navigate("/contacts");
-  }, [navigate]);
+    onItemClick?.();
+  }, [navigate, onItemClick]);
 
   const handleSearchChange = useCallback((e) => {
     setSearchQuery(e.target.value);

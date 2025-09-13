@@ -9,17 +9,23 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   const groupMessagesByDate = (messages) => {
     const groups = {};
+    if (!Array.isArray(messages)) return groups;
+
     messages.forEach((message) => {
-      const date = new Date(message.createdAt).toDateString();
-      if (!groups[date]) {
-        groups[date] = [];
+      if (message && message.createdAt) {
+        const date = new Date(message.createdAt).toDateString();
+        if (!groups[date]) {
+          groups[date] = [];
+        }
+        groups[date].push(message);
       }
-      groups[date].push(message);
     });
     return groups;
   };
@@ -52,7 +58,6 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
       <AnimatePresence initial={false}>
         {Object.entries(messageGroups).map(([date, dayMessages]) => (
           <div key={date}>
-            {/* Date separator */}
             <div className="flex justify-center mb-4">
               <span className="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full">
                 {formatDate(date, { dateOnly: true })}
@@ -61,7 +66,6 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
 
             {dayMessages.map((message, index) => {
               if (!message || !message.id) {
-                console.warn("Invalid message object:", message);
                 return null;
               }
 
@@ -72,7 +76,7 @@ export const MessageList = ({ messages, isLoading, currentUserId }) => {
                 dayMessages[index - 1]?.senderId !== message.senderId ||
                 new Date(message.createdAt) -
                   new Date(dayMessages[index - 1]?.createdAt) >
-                  5 * 60 * 1000; // 5 minutes
+                  5 * 60 * 1000;
 
               return (
                 <motion.div

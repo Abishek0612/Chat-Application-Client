@@ -1,12 +1,15 @@
 import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
+import { useDispatch } from "react-redux";
 import { Camera, Upload, X } from "lucide-react";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
-import { uploadService } from "../../services/upload";
+import { updateUserProfile } from "../../store/slices/authSlice";
+import { authAPI } from "../../store/api/authApi";
 import toast from "react-hot-toast";
 
 export const AvatarUpload = ({ currentAvatar, onUploadSuccess }) => {
+  const dispatch = useDispatch();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -19,12 +22,24 @@ export const AvatarUpload = ({ currentAvatar, onUploadSuccess }) => {
     }
   };
 
+  const validateFile = (file) => {
+    const maxSize = 5 * 1024 * 1024;
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+
+    if (file.size > maxSize) {
+      throw new Error("File size must be less than 5MB");
+    }
+
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error(
+        "File type not supported. Please use JPEG, PNG, GIF, or WebP"
+      );
+    }
+  };
+
   const handleUpload = async (file) => {
     try {
-      uploadService.validateFile(file, {
-        maxSize: 5 * 1024 * 1024,
-        allowedTypes: ["image/*"],
-      });
+      validateFile(file);
 
       const reader = new FileReader();
       reader.onload = (e) => setPreviewUrl(e.target.result);
@@ -33,12 +48,21 @@ export const AvatarUpload = ({ currentAvatar, onUploadSuccess }) => {
       setIsUploading(true);
       setUploadProgress(0);
 
-      const result = await uploadService.uploadAvatar(file, (progress) => {
-        setUploadProgress(progress);
-      });
+      const formData = new FormData();
+      formData.append("avatar", file);
 
-      toast.success("Avatar updated successfully");
-      onUploadSuccess?.(result.fileUrl);
+      const response = await authAPI.uploadAvatar(formData);
+
+      const newAvatarUrl = response.data.data?.user?.avatar;
+
+      if (newAvatarUrl) {
+        dispatch(updateUserProfile({ avatar: newAvatarUrl }));
+        toast.success("Avatar updated successfully");
+        onUploadSuccess?.(newAvatarUrl);
+        setPreviewUrl(null);
+      } else {
+        throw new Error("Invalid response from server");
+      }
     } catch (error) {
       console.error("Upload error:", error);
       toast.error(error.message || "Failed to upload avatar");
@@ -46,6 +70,9 @@ export const AvatarUpload = ({ currentAvatar, onUploadSuccess }) => {
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -68,27 +95,28 @@ export const AvatarUpload = ({ currentAvatar, onUploadSuccess }) => {
     }
   };
 
+  const displayAvatar = previewUrl || currentAvatar;
+
   return (
     <div className="flex flex-col items-center space-y-4">
       <div className="relative">
         <motion.div
           whileHover={{ scale: 1.05 }}
-          className="relative"
+          className="relative cursor-pointer"
           onDrop={handleDrop}
           onDragOver={handleDragOver}
+          onClick={() => !isUploading && fileInputRef.current?.click()}
         >
           <Avatar
-            src={previewUrl || currentAvatar}
+            src={displayAvatar}
             size="2xl"
-            className="cursor-pointer border-4 border-white shadow-lg"
+            className="border-4 border-white shadow-lg"
           />
 
-          {/* Upload overlay */}
           <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
             <Camera className="h-8 w-8 text-white" />
           </div>
 
-          {/* Upload progress */}
           {isUploading && (
             <div className="absolute inset-0 bg-black bg-opacity-70 rounded-full flex items-center justify-center">
               <div className="text-center text-white">
@@ -104,10 +132,12 @@ export const AvatarUpload = ({ currentAvatar, onUploadSuccess }) => {
           )}
         </motion.div>
 
-        {/* Remove preview button */}
         {previewUrl && !isUploading && (
           <button
-            onClick={removePreview}
+            onClick={(e) => {
+              e.stopPropagation();
+              removePreview();
+            }}
             className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
           >
             <X className="h-4 w-4" />
@@ -115,7 +145,6 @@ export const AvatarUpload = ({ currentAvatar, onUploadSuccess }) => {
         )}
       </div>
 
-      {/* Upload buttons */}
       <div className="flex space-x-2">
         <Button
           type="button"
@@ -152,7 +181,6 @@ export const AvatarUpload = ({ currentAvatar, onUploadSuccess }) => {
         </Button>
       </div>
 
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -161,7 +189,6 @@ export const AvatarUpload = ({ currentAvatar, onUploadSuccess }) => {
         className="hidden"
       />
 
-      {/* Upload instructions */}
       <p className="text-xs text-gray-500 text-center max-w-xs">
         Upload a photo to personalize your profile. Max size: 5MB. Supported
         formats: JPG, PNG, GIF, WebP.

@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  sidebarOpen: true,
+  sidebarOpen: false,
   theme: "light",
   notifications: {
     enabled: true,
@@ -84,16 +84,12 @@ const uiSlice = createSlice({
       try {
         const savedTheme = localStorage.getItem("theme");
         const savedNotifications = localStorage.getItem("notifications");
-        const savedSidebar = localStorage.getItem("sidebarOpen");
 
         if (savedTheme) {
           state.theme = savedTheme;
         }
         if (savedNotifications) {
           state.notifications = JSON.parse(savedNotifications);
-        }
-        if (savedSidebar !== null) {
-          state.sidebarOpen = JSON.parse(savedSidebar);
         }
       } catch (error) {
         console.error("Error loading UI settings:", error);
@@ -106,7 +102,6 @@ const uiSlice = createSlice({
           "notifications",
           JSON.stringify(state.notifications)
         );
-        localStorage.setItem("sidebarOpen", JSON.stringify(state.sidebarOpen));
       } catch (error) {
         console.error("Error saving UI settings:", error);
       }

@@ -15,6 +15,7 @@ import {
   addMessage,
   clearMessages,
   markChatMessagesAsRead,
+  setCurrentChatId,
 } from "../../store/slices/messageSlice";
 import {
   fetchChatById,
@@ -59,9 +60,7 @@ export const ChatWindow = () => {
         setError(null);
         setIsInitialLoad(true);
 
-        dispatch(clearMessages());
-
-        console.log("Loading chat data for chatId:", chatId);
+        dispatch(setCurrentChatId(chatId));
 
         const [chatResult, messagesResult] = await Promise.allSettled([
           dispatch(fetchChatById(chatId)).unwrap(),
@@ -69,7 +68,6 @@ export const ChatWindow = () => {
         ]);
 
         if (chatResult.status === "fulfilled") {
-          console.log("Chat loaded successfully:", chatResult.value);
           setTimeout(() => {
             dispatch(markMessagesAsRead(chatId));
           }, 500);
@@ -318,7 +316,6 @@ export const ChatWindow = () => {
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Chat Header */}
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -397,7 +394,6 @@ export const ChatWindow = () => {
         </div>
       </motion.div>
 
-      {/* Messages Area */}
       <div className="flex-1 overflow-hidden relative min-h-0">
         <div className="h-full flex flex-col">
           <div className="flex-1 overflow-y-auto">
@@ -424,7 +420,6 @@ export const ChatWindow = () => {
         </div>
       </div>
 
-      {/* Message Input */}
       <div className="flex-shrink-0">
         <MessageInput
           onSendMessage={handleSendMessage}
